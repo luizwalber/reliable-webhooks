@@ -458,7 +458,6 @@ components:
           type: string
           format: date-time
           nullable: true
-          nullable: true
 
     EndpointCreateRequest:
       type: object
@@ -484,6 +483,19 @@ components:
         circuitBreakerState:
           type: string
           enum: [CLOSED, OPEN, HALF_OPEN]
+        successCount:
+          type: integer
+          description: All-time count of Deliveries to this endpoint that reached DELIVERED.
+        deadCount:
+          type: integer
+          description: All-time count of Deliveries to this endpoint that reached DEAD.
+        successRate:
+          type: number
+          format: double
+          nullable: true
+          description: >
+            successCount / (successCount + deadCount). Null when both are zero
+            (no terminal deliveries yet) rather than an undefined division.
         createdAt:
           type: string
           format: date-time
