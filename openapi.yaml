@@ -1,0 +1,532 @@
+openapi: 3.0.3
+info:
+  title: Reliable Webhooks API
+  description: >
+    Reliable webhook-delivery service. Producers POST events to the ingestion API;
+    the platform fans each event out to every registered consumer endpoint,
+    tracking delivery independently per (event, endpoint) pair with retry,
+    dead-letter handling, and per-endpoint circuit breaking.
+
+    Delivery contract: **at-least-once, with possible duplicates** — not exactly-once.
+    Every delivered webhook carries a stable `X-Webhook-Delivery-Id` header;
+    consumers whose own processing isn't naturally idempotent must dedupe on it.
+    See the `Idempotency-Key` header on event ingestion for producer-side dedup.
+
+    This document is the single source of truth for the API contract. The
+    reference implementation is Java 21 + Spring Boot; a future implementation
+    (e.g. NestJS) must conform to this same contract.
+  version: 0.1.0
+servers:
+  - url: /v1
+tags:
+  - name: Ingestion
+    description: Producer-facing API for submitting events.
+  - name: Management
+    description: Frontend-facing API for registering endpoints and inspecting delivery state.
+
+paths:
+  /events:
+    get:
+      tags: [Management]
+      summary: List ingested events
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Paged list of events.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedEvents'
+    post:
+      tags: [Ingestion]
+      summary: Ingest an event
+      description: >
+        Accepts an event from a producer system and fans it out to every
+        registered consumer endpoint. Idempotent per `Idempotency-Key`,
+        scoped to the calling producer: a retried request with the same key
+        returns the exact original response (202, same body) rather than
+        creating a duplicate event.
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Client-supplied key, scoped per producer. TTL 24h.
+        - name: X-Producer-Id
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Identifies the calling producer system (idempotency scoping key).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventIngestRequest'
+      responses:
+        '202':
+          description: Event accepted (or replayed from a prior identical request).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /endpoints:
+    get:
+      tags: [Management]
+      summary: List registered consumer endpoints
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Paged list of endpoints.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedEndpoints'
+    post:
+      tags: [Management]
+      summary: Register a new consumer endpoint
+      description: >
+        Generates a random HMAC secret for the endpoint. The secret is
+        returned **once**, in this response only — it cannot be retrieved
+        again afterward. No rotation is supported this phase.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EndpointCreateRequest'
+      responses:
+        '201':
+          description: Endpoint registered. Response includes the one-time secret.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EndpointCreated'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /endpoints/{endpointId}:
+    parameters:
+      - $ref: '#/components/parameters/EndpointId'
+    get:
+      tags: [Management]
+      summary: Get a registered endpoint
+      description: Does not include the secret — it is only ever returned once, at creation.
+      responses:
+        '200':
+          description: The endpoint.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Endpoint'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Management]
+      summary: Remove a registered endpoint
+      responses:
+        '204':
+          description: Endpoint removed.
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /events/{eventId}:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+    get:
+      tags: [Management]
+      summary: Get an ingested event
+      responses:
+        '200':
+          description: The event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /events/{eventId}/deliveries:
+    parameters:
+      - $ref: '#/components/parameters/EventId'
+    get:
+      tags: [Management]
+      summary: List deliveries for an event, across all endpoints it fanned out to
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Paged list of deliveries for this event.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDeliveries'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /deliveries:
+    get:
+      tags: [Management]
+      summary: List deliveries
+      description: >
+        The DLQ view is `state=DEAD` — there is no separate DLQ resource.
+        A delivery is the unit of state for one (event, endpoint) pair.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+        - name: state
+          in: query
+          schema:
+            $ref: '#/components/schemas/DeliveryState'
+          description: Filter by delivery state, e.g. `DEAD` for the DLQ view.
+        - name: endpointId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Paged list of deliveries.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDeliveries'
+
+  /deliveries/{deliveryId}:
+    parameters:
+      - $ref: '#/components/parameters/DeliveryId'
+    get:
+      tags: [Management]
+      summary: Get a delivery
+      responses:
+        '200':
+          description: The delivery.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /deliveries/{deliveryId}/attempts:
+    parameters:
+      - $ref: '#/components/parameters/DeliveryId'
+    get:
+      tags: [Management]
+      summary: List attempts for a delivery (the per-event attempt timeline)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Paged list of attempts, oldest first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedAttempts'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /deliveries/{deliveryId}/retry:
+    parameters:
+      - $ref: '#/components/parameters/DeliveryId'
+    post:
+      tags: [Management]
+      summary: Manually retry a dead delivery
+      description: >
+        Only valid when the delivery is in state `DEAD`. Resets the attempt
+        counter to 0 and re-enters the retry ladder from the first band.
+      responses:
+        '200':
+          description: Delivery re-queued for retry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Delivery'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Delivery is not in state DEAD — cannot be manually retried.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+    Size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    EventId:
+      name: eventId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    EndpointId:
+      name: endpointId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DeliveryId:
+      name: deliveryId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Validation error.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Resource not found.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    Problem:
+      description: RFC 7807 Problem Details, per Spring Boot 3's ProblemDetail.
+      type: object
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
+
+    EventIngestRequest:
+      type: object
+      required: [payload]
+      properties:
+        payload:
+          type: object
+          description: Producer-defined event body, delivered verbatim (byte-for-byte) to consumers.
+          additionalProperties: true
+        eventType:
+          type: string
+          description: Producer-defined event type/name, for filtering and display.
+
+    EventState:
+      type: string
+      description: >
+        Provisional — Event covers only the ingest-to-fan-out lifecycle;
+        per-endpoint delivery outcome lives on Delivery, not here. Full
+        enum pending ticket #10 (Event/attempt state machine).
+      enum: [RECEIVED, OUTBOXED, PUBLISHED]
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventType:
+          type: string
+        producerId:
+          type: string
+        idempotencyKey:
+          type: string
+        state:
+          $ref: '#/components/schemas/EventState'
+        payload:
+          type: object
+          additionalProperties: true
+        receivedAt:
+          type: string
+          format: date-time
+
+    DeliveryState:
+      type: string
+      description: >
+        Provisional — matches the sketch from ticket #2. Full transition
+        semantics pending ticket #10 (Event/attempt state machine).
+      enum: [AWAITING_RETRY, DELIVERING, DELIVERED, DEAD]
+
+    Delivery:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        eventId:
+          type: string
+          format: uuid
+        endpointId:
+          type: string
+          format: uuid
+        state:
+          $ref: '#/components/schemas/DeliveryState'
+        attemptCount:
+          type: integer
+        nextAttemptAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AttemptOutcome:
+      type: string
+      enum: [SUCCESS, TIMEOUT, HTTP_5XX, HTTP_4XX, CIRCUIT_OPEN]
+
+    Attempt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        deliveryId:
+          type: string
+          format: uuid
+        attemptNumber:
+          type: integer
+        outcome:
+          $ref: '#/components/schemas/AttemptOutcome'
+        httpStatusCode:
+          type: integer
+          nullable: true
+        topic:
+          type: string
+          description: Kafka topic this attempt was consumed from.
+        startedAt:
+          type: string
+          format: date-time
+        finishedAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    EndpointCreateRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+        description:
+          type: string
+
+    Endpoint:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        description:
+          type: string
+        circuitBreakerState:
+          type: string
+          enum: [CLOSED, OPEN, HALF_OPEN]
+        createdAt:
+          type: string
+          format: date-time
+
+    EndpointCreated:
+      description: Returned only from POST /endpoints — the one and only time the secret is visible.
+      allOf:
+        - $ref: '#/components/schemas/Endpoint'
+        - type: object
+          properties:
+            secret:
+              type: string
+              description: >
+                HMAC signing secret for this endpoint. Shown once, here.
+                Cannot be retrieved again. No rotation this phase.
+
+    PageMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+
+    PagedEvents:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+
+    PagedEndpoints:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Endpoint'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+
+    PagedDeliveries:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Delivery'
+        page:
+          $ref: '#/components/schemas/PageMeta'
+
+    PagedAttempts:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attempt'
+        page:
+          $ref: '#/components/schemas/PageMeta'
