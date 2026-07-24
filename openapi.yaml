@@ -348,9 +348,10 @@ components:
     EventState:
       type: string
       description: >
-        Provisional — Event covers only the ingest-to-fan-out lifecycle;
-        per-endpoint delivery outcome lives on Delivery, not here. Full
-        enum pending ticket #10 (Event/attempt state machine).
+        Event covers only the ingest-to-fan-out lifecycle; PUBLISHED is
+        terminal (no failure state — the outbox poller's own re-poll
+        mechanism handles recovery, it isn't modeled as an Event state).
+        Per-endpoint delivery outcome lives on Delivery, not here.
       enum: [RECEIVED, OUTBOXED, PUBLISHED]
 
     Event:
@@ -377,9 +378,15 @@ components:
     DeliveryState:
       type: string
       description: >
-        Provisional — matches the sketch from ticket #2. Full transition
-        semantics pending ticket #10 (Event/attempt state machine).
-      enum: [AWAITING_RETRY, DELIVERING, DELIVERED, DEAD]
+        SCHEDULED is both the initial state (right after fan-out creates
+        the Delivery) and the post-failure/awaiting-next-band state — one
+        name for both, since mechanically both mean "an attempt is
+        scheduled, due immediately or at nextAttemptAt." Legal transitions:
+        SCHEDULED -> DELIVERING -> DELIVERED (terminal); DELIVERING ->
+        SCHEDULED (failure, retries left); DELIVERING -> DEAD (terminal,
+        attempts exhausted); DEAD -> SCHEDULED (manual retry, attempt
+        counter reset to 0).
+      enum: [SCHEDULED, DELIVERING, DELIVERED, DEAD]
 
     Delivery:
       type: object
@@ -410,10 +417,20 @@ components:
 
     AttemptOutcome:
       type: string
-      enum: [SUCCESS, TIMEOUT, HTTP_5XX, HTTP_4XX, CIRCUIT_OPEN]
+      description: >
+        DEDUPED covers a duplicate Kafka message (from an outbox-poller
+        crash-and-republish) caught by the delivery-time dedup check
+        against an already-DELIVERED Delivery — no real HTTP call is made,
+        same as CIRCUIT_OPEN, so the dedup mechanism stays visible in the
+        attempts timeline instead of silently dropping the message.
+      enum: [SUCCESS, TIMEOUT, HTTP_5XX, HTTP_4XX, CIRCUIT_OPEN, DEDUPED]
 
     Attempt:
       type: object
+      description: >
+        Created the moment the worker begins processing (dedup check
+        passed), with outcome and finishedAt both null. Updated in place
+        once resolved — outcome: null is itself the in-flight signal.
       properties:
         id:
           type: string
@@ -424,7 +441,10 @@ components:
         attemptNumber:
           type: integer
         outcome:
-          $ref: '#/components/schemas/AttemptOutcome'
+          allOf:
+            - $ref: '#/components/schemas/AttemptOutcome'
+          nullable: true
+          description: Null while the attempt is in flight.
         httpStatusCode:
           type: integer
           nullable: true
@@ -437,6 +457,7 @@ components:
         finishedAt:
           type: string
           format: date-time
+          nullable: true
           nullable: true
 
     EndpointCreateRequest:
