@@ -147,7 +147,17 @@ class ProcessDeliveryAttemptUseCaseTest {
         }
 
         @Override
+        public boolean existsById(UUID id) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public Page<Delivery> findByEventId(UUID eventId, Pageable pageable) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Page<Delivery> search(com.reliablewebhooks.delivery.domain.DeliveryState state, UUID endpointId, Pageable pageable) {
             throw new UnsupportedOperationException();
         }
     }
@@ -222,6 +232,11 @@ class ProcessDeliveryAttemptUseCaseTest {
         public Attempt save(Attempt attempt) {
             savedAttempts.add(attempt);
             return attempt;
+        }
+
+        @Override
+        public org.springframework.data.domain.Page<Attempt> findByDeliveryId(UUID deliveryId, Pageable pageable) {
+            throw new UnsupportedOperationException();
         }
     }
 

@@ -36,7 +36,7 @@ class PublishOutboxEntriesUseCaseTest {
 
     private final PublishOutboxEntriesUseCase useCase = new PublishOutboxEntriesUseCase(
             new FakeOutboxRepository(), new FakeEventRepository(), new FakeEndpointRepository(),
-            new FakeDeliveryRepository(), new FakeDeliveryPublisher(), 50);
+            new FakeDeliveryRepository(), new FakeDeliveryPublisher(), 50, true);
 
     @Test
     void fansOutToEveryRegisteredEndpointAndPublishesOneMessagePerDelivery() {
@@ -184,7 +184,17 @@ class PublishOutboxEntriesUseCaseTest {
         }
 
         @Override
+        public boolean existsById(UUID id) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public Page<Delivery> findByEventId(UUID eventId, Pageable pageable) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Page<Delivery> search(DeliveryState state, UUID endpointId, Pageable pageable) {
             throw new UnsupportedOperationException();
         }
     }

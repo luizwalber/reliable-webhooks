@@ -63,4 +63,17 @@ public class Delivery {
         this.nextAttemptAt = null;
         this.updatedAt = OffsetDateTime.now();
     }
+
+    /**
+     * Manual retry (POST /deliveries/{id}/retry) — a full reset, not another
+     * rung on the retry ladder: attemptCount back to 0, due immediately.
+     * Re-enters the exact same path a brand-new Delivery takes (docs/adr/0005-state-machine).
+     * Only legal from DEAD — the calling use case checks this before calling.
+     */
+    public void retryManually() {
+        this.state = DeliveryState.SCHEDULED;
+        this.attemptCount = 0;
+        this.nextAttemptAt = OffsetDateTime.now();
+        this.updatedAt = OffsetDateTime.now();
+    }
 }
