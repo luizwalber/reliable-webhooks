@@ -95,14 +95,16 @@ class EventIngestionTest extends AbstractIntegrationTest {
                         .header("X-Producer-Id", "producer-a")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isAccepted());
+                .andExpect(status().isAccepted())
+                .andExpect(openApi().isValid(OPENAPI_SPEC_PATH));
 
         mockMvc.perform(post("/events")
                         .header("Idempotency-Key", idempotencyKey)
                         .header("X-Producer-Id", "producer-b")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
-                .andExpect(status().isAccepted());
+                .andExpect(status().isAccepted())
+                .andExpect(openApi().isValid(OPENAPI_SPEC_PATH));
 
         assertThat(eventRepository.findAll()).hasSize(2);
     }
@@ -124,6 +126,28 @@ class EventIngestionTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/events/{id}", UUID.randomUUID()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
+                .andExpect(openApi().isValid(OPENAPI_SPEC_PATH));
+    }
+
+    @Test
+    void getByIdReturnsTheEventForAKnownEvent() throws Exception {
+        String producerId = "producer-" + UUID.randomUUID();
+        MvcResult created = mockMvc.perform(post("/events")
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .header("X-Producer-Id", producerId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"eventType":"order.created","payload":{"orderId":"o-known"}}"""))
+                .andExpect(status().isAccepted())
+                .andReturn();
+        String id = com.jayway.jsonpath.JsonPath.read(created.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(get("/events/{id}", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.state").value("OUTBOXED"))
+                .andExpect(jsonPath("$.producerId").value(producerId))
+                .andExpect(jsonPath("$.payload.orderId").value("o-known"))
                 .andExpect(openApi().isValid(OPENAPI_SPEC_PATH));
     }
 

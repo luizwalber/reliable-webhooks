@@ -61,12 +61,17 @@ class EndpointManagementTest extends AbstractIntegrationTest {
                         .content("""
                                 {"url":"https://example.com/delete-me"}"""))
                 .andExpect(status().isCreated())
+                .andExpect(openApi().isValid(OPENAPI_SPEC_PATH))
                 .andReturn();
         String id = com.jayway.jsonpath.JsonPath.read(created.getResponse().getContentAsString(), "$.id");
 
-        mockMvc.perform(delete("/endpoints/{id}", id)).andExpect(status().isNoContent());
+        mockMvc.perform(delete("/endpoints/{id}", id))
+                .andExpect(status().isNoContent())
+                .andExpect(openApi().isValid(OPENAPI_SPEC_PATH));
 
-        mockMvc.perform(get("/endpoints/{id}", id)).andExpect(status().isNotFound());
+        mockMvc.perform(get("/endpoints/{id}", id))
+                .andExpect(status().isNotFound())
+                .andExpect(openApi().isValid(OPENAPI_SPEC_PATH));
     }
 
     @Test
