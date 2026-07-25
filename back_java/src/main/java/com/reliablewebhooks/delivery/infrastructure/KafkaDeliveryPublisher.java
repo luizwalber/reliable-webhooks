@@ -11,6 +11,8 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Publishes to the main topic, the retry-band topics, and the DLQ topic
@@ -21,6 +23,14 @@ import org.springframework.stereotype.Component;
  * demo-scale simplification). Which band an attempt retries onto and its
  * jittered delay are RetryLadder's job — this class only owns the Kafka
  * mechanics of actually sending.
+ *
+ * Every send defers until the current transaction commits, if one is
+ * active: KafkaTemplate.send() doesn't participate in the surrounding
+ * Postgres transaction, so a fast consumer could otherwise read a Delivery
+ * by ID (or its updated state) before the write that produced it is even
+ * visible. Owning this here — not in each caller — means every use case
+ * that publishes gets the guarantee automatically, rather than needing to
+ * remember it per call site.
  *
  * Constructor is hand-written (not @RequiredArgsConstructor, see
  * .claude/lombok.mdc) because mainTopic/dlqTopic are @Value-injected.
@@ -79,7 +89,20 @@ class KafkaDeliveryPublisher implements DeliveryPublisher {
         if (nextAttemptAt != null) {
             record.headers().add(NEXT_ATTEMPT_AT_HEADER, nextAttemptAt.toString().getBytes(StandardCharsets.UTF_8));
         }
-        kafkaTemplate.send(record);
+        sendAfterCommit(record);
+    }
+
+    private void sendAfterCommit(ProducerRecord<String, String> record) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            kafkaTemplate.send(record);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                kafkaTemplate.send(record);
+            }
+        });
     }
 
     private String writeValueAsString(DeliveryAttemptMessage message) {
