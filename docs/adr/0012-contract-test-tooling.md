@@ -21,5 +21,7 @@ Rationale:
 
 ## Consequences
 
-- No new test runner or CI infrastructure beyond the Testcontainers setup already planned — contract assertions are just more `MockMvc` test methods.
+- No new test runner or CI infrastructure — contract assertions are just more `MockMvc` test methods.
 - Contract tests validate directly against `openapi.yaml` ([ADR-0008](0008-openapi-resource-model.md)), so spec drift fails the build rather than silently diverging.
+- This ADR's tooling choice is unaffected by [ADR-0014](0014-docker-compose-test-seam.md), which replaced Testcontainers-managed containers with a `docker compose`-provided Postgres/Redis for the same `MockMvc` tests — the container-orchestration mechanism changed, not the contract-validation approach.
+- **Exception to "every test gets `openApi().isValid(...)`"**: the `swagger-request-validator-mockmvc` 2.42.0 `openApi()` matcher validates the request and response together, with no response-only mode. Tests that deliberately send a schema-invalid request (to assert our own bean validation rejects it with a 400) can never pass that combined check — so those specific tests assert the response shape via `jsonPath` instead, and skip the contract-validation assertion, with a comment explaining why.

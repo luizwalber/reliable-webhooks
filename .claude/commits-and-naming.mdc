@@ -44,4 +44,4 @@ endpoint/infrastructure/EndpointRepositoryAdapter.java
 
 - Minimum **80%** line coverage on new/changed application and domain code.
 - Every use case and domain state-machine rule must have a unit test.
-- Every REST endpoint requires an integration test (MockMvc + Testcontainers, contract-validated against `openapi.yaml` — see `docs/adr/0012-contract-test-tooling.md`).
+- Every REST endpoint requires an integration test (MockMvc against a `docker compose`-provided Postgres + Redis, contract-validated against `openapi.yaml` — see `docs/adr/0012-contract-test-tooling.md` and `docs/adr/0014-docker-compose-test-seam.md`). Run `docker compose -f back_java/docker-compose.test.yml up -d` before `mvn test`.

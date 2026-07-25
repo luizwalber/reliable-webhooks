@@ -81,7 +81,8 @@ class EventIngestionTest extends AbstractIntegrationTest {
 
         assertThat(second.getResponse().getContentAsString())
                 .isEqualTo(first.getResponse().getContentAsString());
-        assertThat(eventRepository.count()).isEqualTo(1);
+        assertThat(eventRepository.findAll().stream().filter(e -> e.getIdempotencyKey().equals(idempotencyKey)).count())
+                .isEqualTo(1);
     }
 
     @Test
@@ -106,19 +107,23 @@ class EventIngestionTest extends AbstractIntegrationTest {
                 .andExpect(status().isAccepted())
                 .andExpect(openApi().isValid(OPENAPI_SPEC_PATH));
 
-        assertThat(eventRepository.findAll()).hasSize(2);
+        assertThat(eventRepository.findAll().stream().filter(e -> e.getIdempotencyKey().equals(idempotencyKey)).toList())
+                .hasSize(2);
     }
 
     @Test
     void rejectsAnIngestRequestMissingTheRequiredPayloadField() throws Exception {
+        // No contract-validation assertion here: the request is deliberately
+        // schema-invalid (that's what's under test), and this library's
+        // openApi().isValid() checks the request and response together —
+        // it can never pass against an intentionally invalid request.
         mockMvc.perform(post("/events")
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .header("X-Producer-Id", "producer-x")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(openApi().isValid(OPENAPI_SPEC_PATH));
+                .andExpect(jsonPath("$.status").value(400));
     }
 
     @Test

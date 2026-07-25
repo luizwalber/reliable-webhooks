@@ -83,11 +83,14 @@ class EndpointManagementTest extends AbstractIntegrationTest {
 
     @Test
     void rejectsAnEndpointCreateRequestMissingTheRequiredUrlField() throws Exception {
+        // No contract-validation assertion here: the request is deliberately
+        // schema-invalid (that's what's under test), and this library's
+        // openApi().isValid() checks the request and response together —
+        // it can never pass against an intentionally invalid request.
         mockMvc.perform(post("/endpoints")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.status").value(400))
-                .andExpect(openApi().isValid(OPENAPI_SPEC_PATH));
+                .andExpect(jsonPath("$.status").value(400));
     }
 }

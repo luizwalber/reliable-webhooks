@@ -2,9 +2,9 @@ spring:
   application:
     name: reliable-webhooks-backend
   datasource:
-    url: jdbc:postgresql://localhost:5432/reliable_webhooks
-    username: reliable_webhooks
-    password: reliable_webhooks
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:reliable_webhooks}
+    username: ${POSTGRES_USER:reliable_webhooks}
+    password: ${POSTGRES_PASSWORD:reliable_webhooks}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -12,7 +12,7 @@ spring:
   data:
     redis:
       host: localhost
-      port: 6379
+      port: ${REDIS_PORT:6379}
     web:
       pageable:
         max-page-size: 100
