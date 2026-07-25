@@ -6,6 +6,12 @@ import java.time.OffsetDateTime;
  * Domain port for putting a Delivery-attempt message onto the right Kafka
  * topic — main, a retry band, or the DLQ (docs/adr/0004-retry-policy-and-topic-topology).
  * Implemented by delivery.infrastructure.KafkaDeliveryPublisher.
+ *
+ * Every method defers its actual send until the caller's transaction
+ * commits, if one is active — the send doesn't participate in that
+ * transaction, so a fast consumer could otherwise see it before the row
+ * it depends on is even visible. Callers can rely on this without
+ * re-implementing it themselves.
  */
 public interface DeliveryPublisher {
 
