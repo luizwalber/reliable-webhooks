@@ -48,8 +48,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
  * Postgres state, and (failure case) the real republish onto the correct
  * retry-band topic. See spec issue #20 ("Testing Decisions").
  *
- * webhook.delivery-worker.enabled=true re-enables the listener that
- * AbstractIntegrationTest turns off by default, in an isolated Spring
+ * webhook.background.delivery-worker.enabled=true re-enables the listener
+ * that AbstractIntegrationTest turns off by default, in an isolated Spring
  * context. Fan-out still targets every Endpoint accumulated by other test
  * classes in the shared persistent test database (docs/adr/0001,
  * docs/adr/0014) — this test looks up its own Delivery by endpointId
@@ -63,7 +63,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
  * seconds to minutes.
  */
 @TestPropertySource(properties = {
-        "webhook.delivery-worker.enabled=true",
+        "webhook.background.delivery-worker.enabled=true",
         "webhook.delivery.http-timeout-ms=200",
         "webhook.retry.bands[0].topic=webhook.delivery.retry.30s",
         "webhook.retry.bands[0].delay-ms=200",

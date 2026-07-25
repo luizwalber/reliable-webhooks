@@ -21,15 +21,17 @@ import org.springframework.stereotype.Component;
  * handing off (docs/adr/0004-retry-policy-and-topic-topology's documented
  * demo-scale simplification; no such header on the main topic).
  *
- * Gated by webhook.delivery-worker.enabled (default true) so integration
- * tests that don't need a live worker aren't racing a real consumer
- * against every event any other test class fans out in the shared
- * persistent test database (docs/adr/0014-docker-compose-test-seam) —
- * DeliveryWorkerTest is the one test class that opts back in.
+ * Gated by webhook.background.delivery-worker.enabled (default true, see
+ * AbstractIntegrationTest's javadoc for the shared background-process
+ * gating convention, spec issue #27) so integration tests that don't need
+ * a live worker aren't racing a real consumer against every event any
+ * other test class fans out in the shared persistent test database
+ * (docs/adr/0014-docker-compose-test-seam) — DeliveryWorkerTest is the
+ * one test class that opts back in.
  */
 @Component
 @RequiredArgsConstructor
-@ConditionalOnProperty(prefix = "webhook.delivery-worker", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "webhook.background.delivery-worker", name = "enabled", havingValue = "true", matchIfMissing = true)
 class DeliveryAttemptConsumer {
 
     private final ProcessDeliveryAttemptUseCase useCase;
