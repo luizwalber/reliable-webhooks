@@ -9,9 +9,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "deliveries")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DeliveryJpaEntity {
 
     @Id
@@ -38,40 +43,4 @@ public class DeliveryJpaEntity {
 
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
-
-    protected DeliveryJpaEntity() {
-        // JPA
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public UUID getEventId() {
-        return eventId;
-    }
-
-    public UUID getEndpointId() {
-        return endpointId;
-    }
-
-    public DeliveryState getState() {
-        return state;
-    }
-
-    public int getAttemptCount() {
-        return attemptCount;
-    }
-
-    public OffsetDateTime getNextAttemptAt() {
-        return nextAttemptAt;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
-    }
 }

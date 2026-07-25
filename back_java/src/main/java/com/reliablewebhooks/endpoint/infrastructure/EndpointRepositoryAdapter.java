@@ -4,18 +4,16 @@ import com.reliablewebhooks.endpoint.domain.Endpoint;
 import com.reliablewebhooks.endpoint.domain.EndpointRepository;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 class EndpointRepositoryAdapter implements EndpointRepository {
 
     private final SpringDataEndpointRepository springDataRepository;
-
-    EndpointRepositoryAdapter(SpringDataEndpointRepository springDataRepository) {
-        this.springDataRepository = springDataRepository;
-    }
 
     @Override
     public Endpoint save(Endpoint endpoint) {

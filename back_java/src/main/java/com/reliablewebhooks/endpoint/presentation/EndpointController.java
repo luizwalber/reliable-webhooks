@@ -12,6 +12,7 @@ import com.reliablewebhooks.endpoint.presentation.dto.EndpointResponse;
 import com.reliablewebhooks.shared.presentation.PagedResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -26,23 +27,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/endpoints")
+@RequiredArgsConstructor
 public class EndpointController {
 
     private final RegisterEndpointUseCase registerEndpointUseCase;
     private final GetEndpointUseCase getEndpointUseCase;
     private final ListEndpointsUseCase listEndpointsUseCase;
     private final DeleteEndpointUseCase deleteEndpointUseCase;
-
-    public EndpointController(
-            RegisterEndpointUseCase registerEndpointUseCase,
-            GetEndpointUseCase getEndpointUseCase,
-            ListEndpointsUseCase listEndpointsUseCase,
-            DeleteEndpointUseCase deleteEndpointUseCase) {
-        this.registerEndpointUseCase = registerEndpointUseCase;
-        this.getEndpointUseCase = getEndpointUseCase;
-        this.listEndpointsUseCase = listEndpointsUseCase;
-        this.deleteEndpointUseCase = deleteEndpointUseCase;
-    }
 
     @PostMapping
     public ResponseEntity<EndpointCreatedResponse> create(@Valid @RequestBody EndpointCreateRequest request) {

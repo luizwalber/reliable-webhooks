@@ -3,17 +3,15 @@ package com.reliablewebhooks.endpoint.application;
 import com.reliablewebhooks.endpoint.domain.EndpointRepository;
 import com.reliablewebhooks.shared.domain.NotFoundException;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class GetEndpointUseCase {
 
     private final EndpointRepository endpointRepository;
-
-    public GetEndpointUseCase(EndpointRepository endpointRepository) {
-        this.endpointRepository = endpointRepository;
-    }
 
     @Transactional(readOnly = true)
     public EndpointView execute(UUID endpointId) {

@@ -16,6 +16,7 @@ import com.reliablewebhooks.event.presentation.dto.EventResponse;
 import com.reliablewebhooks.shared.presentation.PagedResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/events")
+@RequiredArgsConstructor
 public class EventController {
 
     private final IngestEventUseCase ingestEventUseCase;
@@ -39,21 +41,6 @@ public class EventController {
     private final ListDeliveriesForEventUseCase listDeliveriesForEventUseCase;
     private final IdempotencyGateway idempotencyGateway;
     private final ObjectMapper objectMapper;
-
-    public EventController(
-            IngestEventUseCase ingestEventUseCase,
-            GetEventUseCase getEventUseCase,
-            ListEventsUseCase listEventsUseCase,
-            ListDeliveriesForEventUseCase listDeliveriesForEventUseCase,
-            IdempotencyGateway idempotencyGateway,
-            ObjectMapper objectMapper) {
-        this.ingestEventUseCase = ingestEventUseCase;
-        this.getEventUseCase = getEventUseCase;
-        this.listEventsUseCase = listEventsUseCase;
-        this.listDeliveriesForEventUseCase = listDeliveriesForEventUseCase;
-        this.idempotencyGateway = idempotencyGateway;
-        this.objectMapper = objectMapper;
-    }
 
     /**
      * A retried request with the same Idempotency-Key (scoped to the

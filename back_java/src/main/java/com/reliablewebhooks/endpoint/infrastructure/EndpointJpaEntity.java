@@ -9,9 +9,16 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "endpoints")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class EndpointJpaEntity {
 
     @Id
@@ -37,53 +44,4 @@ public class EndpointJpaEntity {
 
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
-
-    protected EndpointJpaEntity() {
-        // JPA
-    }
-
-    public EndpointJpaEntity(UUID id, String url, String description, String secret,
-                              CircuitBreakerState circuitBreakerState, int successCount, int deadCount,
-                              OffsetDateTime createdAt) {
-        this.id = id;
-        this.url = url;
-        this.description = description;
-        this.secret = secret;
-        this.circuitBreakerState = circuitBreakerState;
-        this.successCount = successCount;
-        this.deadCount = deadCount;
-        this.createdAt = createdAt;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getUrl() {
-        return url;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public String getSecret() {
-        return secret;
-    }
-
-    public CircuitBreakerState getCircuitBreakerState() {
-        return circuitBreakerState;
-    }
-
-    public int getSuccessCount() {
-        return successCount;
-    }
-
-    public int getDeadCount() {
-        return deadCount;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
 }

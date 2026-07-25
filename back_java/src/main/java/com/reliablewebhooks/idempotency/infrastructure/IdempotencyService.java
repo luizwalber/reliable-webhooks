@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reliablewebhooks.event.application.IdempotencyGateway;
 import java.time.Duration;
 import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -14,17 +15,13 @@ import org.springframework.stereotype.Service;
  * domain rules of its own — infrastructure only.
  */
 @Service
+@RequiredArgsConstructor
 public class IdempotencyService implements IdempotencyGateway {
 
     private static final Duration TTL = Duration.ofHours(24);
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
-
-    public IdempotencyService(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
-        this.redisTemplate = redisTemplate;
-        this.objectMapper = objectMapper;
-    }
 
     @Override
     public Optional<CachedReplay> find(String producerId, String idempotencyKey) {

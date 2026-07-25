@@ -7,11 +7,18 @@ import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "outbox")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class OutboxJpaEntity {
 
     @Id
@@ -32,42 +39,4 @@ public class OutboxJpaEntity {
 
     @Column(name = "published_at")
     private OffsetDateTime publishedAt;
-
-    protected OutboxJpaEntity() {
-        // JPA
-    }
-
-    public OutboxJpaEntity(UUID id, UUID eventId, Map<String, Object> payload, boolean published,
-                            OffsetDateTime createdAt, OffsetDateTime publishedAt) {
-        this.id = id;
-        this.eventId = eventId;
-        this.payload = payload;
-        this.published = published;
-        this.createdAt = createdAt;
-        this.publishedAt = publishedAt;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public UUID getEventId() {
-        return eventId;
-    }
-
-    public Map<String, Object> getPayload() {
-        return payload;
-    }
-
-    public boolean isPublished() {
-        return published;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public OffsetDateTime getPublishedAt() {
-        return publishedAt;
-    }
 }

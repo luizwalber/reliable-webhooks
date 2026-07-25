@@ -3,16 +3,14 @@ package com.reliablewebhooks.outbox.infrastructure;
 import com.reliablewebhooks.outbox.domain.OutboxEntry;
 import com.reliablewebhooks.outbox.domain.OutboxRepository;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 class OutboxRepositoryAdapter implements OutboxRepository {
 
     private final SpringDataOutboxRepository springDataRepository;
-
-    OutboxRepositoryAdapter(SpringDataOutboxRepository springDataRepository) {
-        this.springDataRepository = springDataRepository;
-    }
 
     @Override
     public OutboxEntry save(OutboxEntry entry) {

@@ -1,0 +1,29 @@
+---
+description: When and how to use Lombok in the backend
+globs: back_java/src/main/java/**/*.java
+alwaysApply: false
+---
+
+# Lombok
+
+Use Lombok to remove boilerplate wherever it doesn't hide a decision. Prefer it over hand-written getters, constructors, and equals/hashCode in every class listed below; when in doubt, prefer the narrowest annotation that removes the boilerplate rather than `@Data`.
+
+## Where to use it
+
+| Class kind | Annotations |
+|---|---|
+| JPA entities (`*JpaEntity`, infrastructure layer) | `@Getter`, `@NoArgsConstructor(access = AccessLevel.PROTECTED)` (JPA requires a no-arg constructor; keep it non-public so only Hibernate uses it), `@AllArgsConstructor` if the mapper constructs one directly |
+| Domain entities (domain layer, e.g. `Event`, `Endpoint`) | `@Getter` on the class. Keep hand-written private/package constructors *only* when named static factories (`receive`, `register`, `reconstitute`) carry meaning Lombok can't express — the factory methods stay manual, but delegate to a Lombok-generated `@AllArgsConstructor(access = PRIVATE)` (or `@RequiredArgsConstructor(access = PRIVATE)` if every field is final) instead of a hand-written one |
+| Spring components with constructor injection (`@RestController`, `@Service`, `@Component` use cases/adapters) | `@RequiredArgsConstructor` on the class, all injected collaborators as `private final` fields — never a hand-written constructor for plain field assignment |
+
+## Where NOT to use it
+
+- **Records** (`EventView`, `EventResponse`, commands, DTOs, `PagedResponse`, etc.) — a Java `record` is already boilerplate-free. Don't wrap a record in `@Value`/`@Data`; don't convert a record to a Lombok class. Records stay records.
+- **`@Data`** — never. It bundles `@ToString`/`@EqualsAndHashCode` onto entities that don't want value-object equality (a JPA entity's identity is its `@Id`, not all fields) and onto domain entities whose equality semantics haven't been decided. Pick `@Getter`/`@AllArgsConstructor`/`@RequiredArgsConstructor` individually instead.
+- **`@Builder`** — not used in this codebase; named static factory methods (`Event.receive(...)`, `Endpoint.register(...)`) are the construction API for domain entities, and they read better than a builder chain for a handful of fields. Don't add `@Builder` to a domain entity without a real need for optional/named-parameter construction.
+- **Utility/mapper classes** (`*Mapper`, `SecureRandomSecretGenerator`) — these have no instance fields and a private constructor preventing instantiation; there's no boilerplate for Lombok to remove.
+- **`@Slf4j` / logging** — no logging exists in this codebase yet; adopt it when logging is actually introduced, not preemptively.
+
+## Field-order note (JPA/all-args constructors)
+
+`@AllArgsConstructor` generates parameters in field declaration order. Where a mapper (`EventMapper`, `EndpointMapper`, `OutboxMapper`) constructs the JPA entity positionally, its call site's argument order must match the entity's field declaration order — there's no compiler check for this, only tests. Keep field declaration order stable once a mapper depends on it.

@@ -2,6 +2,9 @@ package com.reliablewebhooks.delivery.domain;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 
 /**
  * One row per (Event, Endpoint) pair (docs/adr/0001-fan-out-and-delivery-resource).
@@ -9,6 +12,8 @@ import java.util.UUID;
  * the current implementation slice; reconstitute() exists for the day the
  * outbox poller + delivery workers slice starts writing rows.
  */
+@Getter
+@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 public class Delivery {
 
     private final UUID id;
@@ -20,52 +25,8 @@ public class Delivery {
     private final OffsetDateTime createdAt;
     private final OffsetDateTime updatedAt;
 
-    private Delivery(UUID id, UUID eventId, UUID endpointId, DeliveryState state, int attemptCount,
-                      OffsetDateTime nextAttemptAt, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
-        this.id = id;
-        this.eventId = eventId;
-        this.endpointId = endpointId;
-        this.state = state;
-        this.attemptCount = attemptCount;
-        this.nextAttemptAt = nextAttemptAt;
-        this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
-    }
-
     public static Delivery reconstitute(UUID id, UUID eventId, UUID endpointId, DeliveryState state, int attemptCount,
                                          OffsetDateTime nextAttemptAt, OffsetDateTime createdAt, OffsetDateTime updatedAt) {
         return new Delivery(id, eventId, endpointId, state, attemptCount, nextAttemptAt, createdAt, updatedAt);
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public UUID getEventId() {
-        return eventId;
-    }
-
-    public UUID getEndpointId() {
-        return endpointId;
-    }
-
-    public DeliveryState getState() {
-        return state;
-    }
-
-    public int getAttemptCount() {
-        return attemptCount;
-    }
-
-    public OffsetDateTime getNextAttemptAt() {
-        return nextAttemptAt;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
     }
 }

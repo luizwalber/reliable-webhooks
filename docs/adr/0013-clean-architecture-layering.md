@@ -29,9 +29,11 @@ Two pragmatic exceptions, made deliberately rather than by omission:
 - Domain repository ports use Spring Data's `Page`/`Pageable` types directly rather than inventing a framework-agnostic pagination abstraction — treated as a generic contract, not an ORM or HTTP concern.
 - `EventJpaEntity`/`DeliveryJpaEntity`/`EndpointJpaEntity` reuse the domain's state enums (`EventState`, `DeliveryState`, `CircuitBreakerState`) directly via `@Enumerated(EnumType.STRING)` rather than mapping to parallel infrastructure-level enums — an enum is just data, and duplicating it bought no isolation.
 
+Getters and constructors across all four layers are Lombok-generated (`@Getter`, `@RequiredArgsConstructor`/`@AllArgsConstructor`, `@NoArgsConstructor` on JPA entities) rather than hand-written — see `.claude/lombok.mdc`. This is a boilerplate-reduction choice, not a layering exception: Lombok's generated code still respects each layer's constructor-visibility and field rules (e.g. domain entities keep private construction behind named static factories).
+
 ## Consequences
 
-- Every use case is testable with plain-Java fakes of its domain ports, no Spring context or database required (not yet exercised by a test in this slice, but now structurally possible).
+- Every use case is testable with plain-Java fakes of its domain ports, no Spring context or database required — exercised by unit tests under `back_java/src/test/.../application/` and `.../domain/` for every use case and domain rule.
 - Persistence and HTTP concerns can change independently of business rules: swapping the ORM or the web framework touches only `infrastructure`/`presentation`, never `domain`/`application`.
 - More files and more indirection per feature than the flat layout — a real cost, accepted because this project's explicit purpose is demonstrating these patterns, not minimizing line count.
 - `docs/adr/0008-openapi-resource-model.md`'s resources (Event, Endpoint, Delivery, Attempt) now each have a clear home: the domain entity of the same name in the corresponding module.

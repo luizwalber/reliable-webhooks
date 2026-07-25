@@ -10,11 +10,18 @@ import jakarta.persistence.Table;
 import java.time.OffsetDateTime;
 import java.util.Map;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "events")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class EventJpaEntity {
 
     @Id
@@ -39,47 +46,4 @@ public class EventJpaEntity {
 
     @Column(name = "received_at", nullable = false)
     private OffsetDateTime receivedAt;
-
-    protected EventJpaEntity() {
-        // JPA
-    }
-
-    public EventJpaEntity(UUID id, String eventType, String producerId, String idempotencyKey,
-                           EventState state, Map<String, Object> payload, OffsetDateTime receivedAt) {
-        this.id = id;
-        this.eventType = eventType;
-        this.producerId = producerId;
-        this.idempotencyKey = idempotencyKey;
-        this.state = state;
-        this.payload = payload;
-        this.receivedAt = receivedAt;
-    }
-
-    public UUID getId() {
-        return id;
-    }
-
-    public String getEventType() {
-        return eventType;
-    }
-
-    public String getProducerId() {
-        return producerId;
-    }
-
-    public String getIdempotencyKey() {
-        return idempotencyKey;
-    }
-
-    public EventState getState() {
-        return state;
-    }
-
-    public Map<String, Object> getPayload() {
-        return payload;
-    }
-
-    public OffsetDateTime getReceivedAt() {
-        return receivedAt;
-    }
 }

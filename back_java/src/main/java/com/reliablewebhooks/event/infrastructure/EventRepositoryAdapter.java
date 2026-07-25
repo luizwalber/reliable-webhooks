@@ -5,18 +5,16 @@ import com.reliablewebhooks.event.domain.EventRepository;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 class EventRepositoryAdapter implements EventRepository {
 
     private final SpringDataEventRepository springDataRepository;
-
-    EventRepositoryAdapter(SpringDataEventRepository springDataRepository) {
-        this.springDataRepository = springDataRepository;
-    }
 
     @Override
     public Event save(Event event) {

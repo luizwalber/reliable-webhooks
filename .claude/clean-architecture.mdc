@@ -39,6 +39,8 @@ com.reliablewebhooks.event/
 
 A cross-cutting technical concern with no domain rules of its own (idempotency caching, pagination helpers, the global `ProblemDetail` advice) is infrastructure or presentation, not domain — it doesn't earn its own bounded module's full four layers.
 
+Boilerplate (getters, constructors) in any layer is generated via Lombok, not hand-written — see `.claude/lombok.mdc` for which annotations belong on which layer.
+
 ## Examples
 
 ```java

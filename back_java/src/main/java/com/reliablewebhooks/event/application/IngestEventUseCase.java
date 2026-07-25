@@ -4,19 +4,16 @@ import com.reliablewebhooks.event.domain.Event;
 import com.reliablewebhooks.event.domain.EventRepository;
 import com.reliablewebhooks.outbox.domain.OutboxEntry;
 import com.reliablewebhooks.outbox.domain.OutboxRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class IngestEventUseCase {
 
     private final EventRepository eventRepository;
     private final OutboxRepository outboxRepository;
-
-    public IngestEventUseCase(EventRepository eventRepository, OutboxRepository outboxRepository) {
-        this.eventRepository = eventRepository;
-        this.outboxRepository = outboxRepository;
-    }
 
     /**
      * Writes the Event and its Outbox row in a single transaction
