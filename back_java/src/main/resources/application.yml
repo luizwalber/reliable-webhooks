@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: reliable-webhooks-backend
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:reliable_webhooks}
+    username: ${POSTGRES_USER:reliable_webhooks}
+    password: ${POSTGRES_PASSWORD:reliable_webhooks}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  data:
+    redis:
+      host: localhost
+      port: ${REDIS_PORT:6379}
+    web:
+      pageable:
+        max-page-size: 100
+        default-page-size: 20
+  flyway:
+    enabled: true
+  kafka:
+    bootstrap-servers: localhost:${KAFKA_PORT:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+server:
+  port: 8080
+  servlet:
+    context-path: /v1
+
+webhook:
+  outbox:
+    # docs/adr/0003-transactional-outbox
+    poll-interval-ms: 1000
+    batch-size: 50
+  kafka:
+    # docs/adr/0004-retry-policy-and-topic-topology — only the main topic
+    # exists this slice; the retry-band and DLQ topics are created when a
+    # consumer/publisher actually needs them.
+    main-topic: webhook.delivery.main

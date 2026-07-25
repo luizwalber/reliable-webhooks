@@ -1,0 +1,50 @@
+---
+description: Where and how to use MapStruct in the backend
+globs: back_java/src/main/java/**/*.java
+alwaysApply: false
+---
+
+# MapStruct
+
+Use MapStruct for the mechanical, two-directional field-copy between a JPA entity and its domain entity in a module's `infrastructure` layer — the exact class of duplication the four `*Mapper` classes had. Don't reach for it anywhere else; see "Where NOT to use it" below.
+
+## Where to use it
+
+A `*Mapper` interface in `infrastructure`, annotated `@Mapper(componentModel = "spring")`, package-private, one per module that has both directions in real use (`event`, `endpoint`, `outbox` today):
+
+```java
+@Mapper(componentModel = "spring")
+interface EventMapper {
+
+    EventJpaEntity toJpaEntity(Event event);
+
+    default Event toDomain(EventJpaEntity jpaEntity) {
+        if (jpaEntity == null) return null;
+        return Event.reconstitute(jpaEntity.getId(), /* ... */);
+    }
+}
+```
+
+**`domain → JPA` is MapStruct-generated.** MapStruct maps by property name onto the JPA entity's Lombok-generated setters (see below) — no constructor-arg-order risk, no hand-maintained field list.
+
+**`JPA → domain` stays a hand-written `default` method, delegating to the domain entity's own named factory** (`Event.reconstitute(...)`, `Endpoint.reconstitute(...)`, `OutboxEntry.reconstitute(...)`). Domain entities construct only through named factories (`.claude/lombok.mdc`); MapStruct doesn't get a backdoor around that discipline. This also sidesteps MapStruct's inability to target a class with no public constructor or setters.
+
+The `*RepositoryAdapter` in the same package takes the mapper as an injected constructor dependency (via `@RequiredArgsConstructor`, same as every other Spring-managed collaborator), not a static call:
+
+```java
+private final EventMapper eventMapper; // was: static EventMapper.toJpaEntity(...)
+```
+
+## JPA entities need `@Setter`
+
+MapStruct's default strategy for `domain → JPA` is "find a no-arg constructor, then set each property via its setter." JPA entities already have the required no-arg constructor (`@NoArgsConstructor(access = PROTECTED)`, for Hibernate); add `@Setter` alongside the existing `@Getter` so MapStruct has something to call. This is the standard, documented way to pair Lombok JPA entities with MapStruct — don't fight it by trying to force constructor-based mapping onto a class that also exposes a no-arg constructor.
+
+## Annotation-processor ordering
+
+Lombok and MapStruct are both annotation processors reading the same source; MapStruct needs to see Lombok's generated getters/setters/constructors before it runs. The `pom.xml` pins this explicitly via `annotationProcessorPaths`, in this exact order: `lombok`, `lombok-mapstruct-binding`, `mapstruct-processor`. Don't remove `lombok-mapstruct-binding` or reorder the list — without it, MapStruct's generated code silently fails to see Lombok's members.
+
+## Where NOT to use it
+
+- **`DeliveryMapper`** — stays a plain static-method utility class, not MapStruct. Only `toDomain` is ever called (delivery is read-only this slice, per docs/adr/0001); there's no second direction for MapStruct to save work on, so converting it would add an interface, an annotation, and a generated-code round trip for zero reduction in hand-written code. Revisit once the outbox-poller/delivery-worker slice starts writing `Delivery` rows and a real `toJpaEntity` direction exists.
+- **View ↔ Response mapping** (`EventView`/`EventResponse`, etc.) — these are records mapping to records with a static `from()` method, not entities. MapStruct's value is sparing you constructor-arg-order risk on non-record classes; records already get that from the compiler. Don't introduce MapStruct here.
+- **Anything crossing a Clean Architecture layer boundary** (`.claude/clean-architecture.mdc`) — MapStruct mappers live in `infrastructure` and only ever see that layer's JPA entities plus the `domain` layer's entities. Never generate a mapper between `application`-layer views and `presentation`-layer DTOs, or between two `infrastructure` concerns from different modules.

@@ -32,6 +32,8 @@ See `docs/adr/` for the full set, one per load-bearing decision:
 | [0010](docs/adr/0010-simulated-consumers.md) | Simulated-consumer shape |
 | [0011](docs/adr/0011-docker-compose-topology.md) | Docker Compose service topology |
 | [0012](docs/adr/0012-contract-test-tooling.md) | Contract-test tooling |
+| [0013](docs/adr/0013-clean-architecture-layering.md) | Clean Architecture layering for the backend |
+| [0014](docs/adr/0014-docker-compose-test-seam.md) | Docker Compose-based local test seam (replaces Testcontainers) |
 
 ## Out of scope
 

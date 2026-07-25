@@ -1,0 +1,47 @@
+---
+description: Conventional Commits, branch naming, and semantic identifiers (English)
+alwaysApply: true
+---
+
+# Commits and Naming
+
+## Conventional Commits
+
+Format: `type(scope): subject`
+
+Types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`, `ci`
+
+```
+feat(event): add ingest-time idempotency replay cache
+fix(endpoint): return 404 instead of 500 for an unknown endpoint id
+test(event): add outbox row creation assertion to ingestion test
+```
+
+## Branch naming
+
+- `feature/<ticket-or-short-desc>` — new functionality
+- `fix/<ticket-or-short-desc>` — bug fixes
+- `refactor/<scope>` — structural changes
+- `chore/<scope>` — tooling, deps, CI
+
+## Semantic naming (mandatory)
+
+Name by **domain and layer**, never generic:
+
+```
+# ❌ BAD
+utils/Helpers.java
+common/Service.java
+DataProcessor.java
+
+# ✅ GOOD
+event/application/IngestEventUseCase.java
+event/domain/Event.java
+endpoint/infrastructure/EndpointRepositoryAdapter.java
+```
+
+## Test coverage
+
+- Minimum **80%** line coverage on new/changed application and domain code.
+- Every use case and domain state-machine rule must have a unit test.
+- Every REST endpoint requires an integration test (MockMvc against a `docker compose`-provided Postgres + Redis, contract-validated against `openapi.yaml` — see `docs/adr/0012-contract-test-tooling.md` and `docs/adr/0014-docker-compose-test-seam.md`). Run `docker compose -f back_java/docker-compose.test.yml up -d` before `mvn test`.

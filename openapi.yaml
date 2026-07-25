@@ -471,6 +471,7 @@ components:
 
     Endpoint:
       type: object
+      additionalProperties: true
       properties:
         id:
           type: string
@@ -480,6 +481,7 @@ components:
           format: uri
         description:
           type: string
+          nullable: true
         circuitBreakerState:
           type: string
           enum: [CLOSED, OPEN, HALF_OPEN]
@@ -505,6 +507,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/Endpoint'
         - type: object
+          additionalProperties: true
           properties:
             secret:
               type: string

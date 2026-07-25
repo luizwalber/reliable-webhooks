@@ -1,0 +1,44 @@
+---
+description: Core governance rules for reliable-webhooks — context updates, scope discipline
+alwaysApply: true
+---
+
+# Core Governance
+
+## Before implementing
+
+1. Read `CONTEXT.md` (domain glossary) and `docs/adr/` for the architecture decisions covering the area you're about to touch.
+2. Check the [wayfinder map](https://github.com/luizwalber/reliable-webhooks/issues/1) and its closed tickets (issues #2–#16) for the reasoning behind a decision, if the ADR's summary isn't enough.
+3. Follow `.claude/clean-architecture.mdc` for layer boundaries, `.claude/lombok.mdc` for boilerplate conventions, and `.claude/mapstruct.mdc` for entity-mapping conventions within `back_java/`.
+
+## After completing work
+
+Update when relevant:
+- `CONTEXT.md` — new domain terms, new bounded modules
+- `docs/adr/` — a new architectural decision, or one that supersedes an existing ADR (leave the old one in place, marked superseded, rather than editing it in place)
+- The originating GitHub issue — close it with a resolution comment once its work lands
+
+## Scope discipline
+
+- Minimal diff: change only what the task requires.
+- Do not break Clean Architecture layer boundaries (`.claude/clean-architecture.mdc`) without a new ADR recording why.
+- Do not invent architecture decisions; `docs/adr/` and the closed wayfinder tickets are the source of truth. If a needed decision isn't recorded, raise it (a new ADR or a `/grilling` session) rather than assuming.
+- If confidence is low or context is missing, ask before proceeding.
+
+## Commit approval
+
+Never `git commit` without first showing the user what's about to be committed (the diff or a summary of it) and getting explicit go-ahead. This applies even at the end of an otherwise-complete task — finishing the work is not itself permission to commit it.
+
+Never run `git add`/stage changes either. The user stages incrementally themselves while reviewing. Leave the working tree unstaged when a task's implementation work is done; describe what changed (a summary or `git diff` against the working tree) instead of staging it to show them.
+
+## Branching
+
+Every GitHub issue gets its own branch before any work lands — never commit issue work directly to `master`. Branch off `master`, named per `.claude/commits-and-naming.mdc` (`feature/<issue-number>-<short-desc>` for spec/feature issues). Create the branch as the first step of `/implement`, before writing any code.
+
+## Language
+
+- Code, commits, identifiers, and technical docs: **English**.
+
+## Issue tracker
+
+Issues and specs live as GitHub issues on `luizwalber/reliable-webhooks`, managed via the `gh` CLI — see `docs/agents/issue-tracker.md` and `docs/agents/triage-labels.md`.
