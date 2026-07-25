@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: reliable-webhooks-backend
+  datasource:
+    url: jdbc:postgresql://localhost:5432/reliable_webhooks
+    username: reliable_webhooks
+    password: reliable_webhooks
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  data:
+    redis:
+      host: localhost
+      port: 6379
+    web:
+      pageable:
+        max-page-size: 100
+        default-page-size: 20
+  flyway:
+    enabled: true
+
+server:
+  port: 8080
+  servlet:
+    context-path: /v1

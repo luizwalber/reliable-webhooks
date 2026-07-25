@@ -1,0 +1,23 @@
+package com.reliablewebhooks.delivery.infrastructure;
+
+import com.reliablewebhooks.delivery.domain.Delivery;
+import com.reliablewebhooks.delivery.domain.DeliveryRepository;
+import java.util.UUID;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Component;
+
+@Component
+class DeliveryRepositoryAdapter implements DeliveryRepository {
+
+    private final SpringDataDeliveryRepository springDataRepository;
+
+    DeliveryRepositoryAdapter(SpringDataDeliveryRepository springDataRepository) {
+        this.springDataRepository = springDataRepository;
+    }
+
+    @Override
+    public Page<Delivery> findByEventId(UUID eventId, Pageable pageable) {
+        return springDataRepository.findByEventId(eventId, pageable).map(DeliveryMapper::toDomain);
+    }
+}

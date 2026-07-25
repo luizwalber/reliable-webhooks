@@ -1,0 +1,64 @@
+---
+description: Clean Architecture layer boundaries for the Reliable Webhooks backend
+globs: back_java/src/main/java/**/*.java
+alwaysApply: false
+---
+
+# Clean Architecture (Backend)
+
+## Layer dependency rule
+
+Dependencies point **inward only**:
+
+```
+presentation → application → domain ← infrastructure
+```
+
+`domain` depends on nothing else in this list. Everything else depends inward toward it, never sideways or outward.
+
+## Layer responsibilities
+
+| Layer | Contains | Must NOT contain |
+|---|---|---|
+| **domain** | Entities, value objects, state-machine rules, repository/gateway ports (interfaces) | Spring, JPA, Jackson, HTTP |
+| **application** | Use cases (one class per user-facing operation), use-case input/output models, orchestration | JPA entities, SQL, `@RestController`, Jackson annotations |
+| **infrastructure** | JPA entities, Spring Data repositories, port adapters, Redis/Kafka clients, mappers between JPA entities and domain entities | Business rules, HTTP concerns |
+| **presentation** | `@RestController`s, request/response DTOs, `@RestControllerAdvice`, mappers between use-case output and HTTP DTOs | Business rules, persistence concerns |
+
+## Package shape
+
+Each bounded module (`event`, `endpoint`, `delivery`, `outbox`, …) carries all four layers as subpackages:
+
+```
+com.reliablewebhooks.event/
+├── domain/           Event, EventState, EventRepository (port)
+├── application/       IngestEventUseCase, GetEventUseCase, ...
+├── infrastructure/    EventJpaEntity, SpringDataEventRepository, EventRepositoryAdapter, EventMapper
+└── presentation/       EventController, EventIngestRequest, EventResponse
+```
+
+A cross-cutting technical concern with no domain rules of its own (idempotency caching, pagination helpers, the global `ProblemDetail` advice) is infrastructure or presentation, not domain — it doesn't earn its own bounded module's full four layers.
+
+## Examples
+
+```java
+// ❌ BAD — JPA entity leaking into a use case
+public EventResponse ingest(EventIngestRequest request) {
+    Event event = eventRepository.save(new Event(...)); // JPA entity
+    return EventResponse.from(event); // HTTP DTO built in the use case
+}
+
+// ✅ GOOD — use case depends on the domain port and returns a domain view
+public EventView ingest(IngestEventCommand command) {
+    Event event = Event.receive(command.producerId(), command.idempotencyKey(), command.payload());
+    return EventView.from(eventRepository.save(event));
+}
+```
+
+## Bounded modules (this backend)
+
+- `event` — ingestion, idempotency-key handling, outbox write, Event state machine (docs/adr/0002, 0003, 0005)
+- `endpoint` — consumer endpoint registration, HMAC secret issuance, circuit-breaker state (docs/adr/0006, 0007)
+- `delivery` — per (Event, Endpoint) delivery state and its Attempt timeline (docs/adr/0001, 0005) — read-only in the current implementation slice
+- `outbox` — transactional outbox entries awaiting Kafka publication (docs/adr/0003) — no poller yet
+- `idempotency` — the Redis-backed ingest-time replay cache (docs/adr/0002); infrastructure only, no domain layer of its own
