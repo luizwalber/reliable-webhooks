@@ -35,4 +35,9 @@ public class Event {
     public void markOutboxed() {
         this.state = EventState.OUTBOXED;
     }
+
+    /** Fan-out is complete and every Delivery's Kafka message has been sent (docs/adr/0003-transactional-outbox). Terminal — see docs/adr/0005-state-machine. */
+    public void markPublished() {
+        this.state = EventState.PUBLISHED;
+    }
 }

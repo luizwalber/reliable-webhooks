@@ -19,8 +19,24 @@ spring:
         default-page-size: 20
   flyway:
     enabled: true
+  kafka:
+    bootstrap-servers: localhost:${KAFKA_PORT:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
 
 server:
   port: 8080
   servlet:
     context-path: /v1
+
+webhook:
+  outbox:
+    # docs/adr/0003-transactional-outbox
+    poll-interval-ms: 1000
+    batch-size: 50
+  kafka:
+    # docs/adr/0004-retry-policy-and-topic-topology — only the main topic
+    # exists this slice; the retry-band and DLQ topics are created when a
+    # consumer/publisher actually needs them.
+    main-topic: webhook.delivery.main

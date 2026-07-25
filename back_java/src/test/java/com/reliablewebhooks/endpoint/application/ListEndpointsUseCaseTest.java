@@ -58,5 +58,10 @@ class ListEndpointsUseCaseTest {
         public Page<Endpoint> findAllOrderByCreatedAtDesc(Pageable pageable) {
             return new PageImpl<>(endpoints, pageable, endpoints.size());
         }
+
+        @Override
+        public List<Endpoint> findAll() {
+            return List.copyOf(endpoints);
+        }
     }
 }

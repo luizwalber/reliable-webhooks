@@ -27,7 +27,13 @@ Update when relevant:
 
 ## Commit approval
 
-Never `git commit` without first showing the user what's about to be committed (the diff or a summary of it) and getting explicit go-ahead. This applies even at the end of an otherwise-complete task — finishing the work is not itself permission to commit it. Staging (`git add`) to inspect a diff is fine; the commit itself is the step that needs a yes.
+Never `git commit` without first showing the user what's about to be committed (the diff or a summary of it) and getting explicit go-ahead. This applies even at the end of an otherwise-complete task — finishing the work is not itself permission to commit it.
+
+Never run `git add`/stage changes either. The user stages incrementally themselves while reviewing. Leave the working tree unstaged when a task's implementation work is done; describe what changed (a summary or `git diff` against the working tree) instead of staging it to show them.
+
+## Branching
+
+Every GitHub issue gets its own branch before any work lands — never commit issue work directly to `master`. Branch off `master`, named per `.claude/commits-and-naming.mdc` (`feature/<issue-number>-<short-desc>` for spec/feature issues). Create the branch as the first step of `/implement`, before writing any code.
 
 ## Language
 

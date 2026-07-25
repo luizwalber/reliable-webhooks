@@ -2,6 +2,7 @@ package com.reliablewebhooks.endpoint.infrastructure;
 
 import com.reliablewebhooks.endpoint.domain.Endpoint;
 import com.reliablewebhooks.endpoint.domain.EndpointRepository;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -40,5 +41,10 @@ class EndpointRepositoryAdapter implements EndpointRepository {
     @Override
     public Page<Endpoint> findAllOrderByCreatedAtDesc(Pageable pageable) {
         return springDataRepository.findAllByOrderByCreatedAtDesc(pageable).map(endpointMapper::toDomain);
+    }
+
+    @Override
+    public List<Endpoint> findAll() {
+        return springDataRepository.findAll().stream().map(endpointMapper::toDomain).toList();
     }
 }

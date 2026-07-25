@@ -78,6 +78,11 @@ class ListDeliveriesForEventUseCaseTest {
 
     private static class EmptyDeliveryRepository implements DeliveryRepository {
         @Override
+        public Delivery save(Delivery delivery) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public Page<Delivery> findByEventId(UUID eventId, Pageable pageable) {
             return new PageImpl<>(List.of());
         }

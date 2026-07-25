@@ -61,6 +61,6 @@ public EventView ingest(IngestEventCommand command) {
 
 - `event` — ingestion, idempotency-key handling, outbox write, Event state machine (docs/adr/0002, 0003, 0005)
 - `endpoint` — consumer endpoint registration, HMAC secret issuance, circuit-breaker state (docs/adr/0006, 0007)
-- `delivery` — per (Event, Endpoint) delivery state and its Attempt timeline (docs/adr/0001, 0005) — read-only in the current implementation slice
-- `outbox` — transactional outbox entries awaiting Kafka publication (docs/adr/0003) — no poller yet
+- `delivery` — per (Event, Endpoint) delivery state, its Attempt timeline, and the Kafka `DeliveryPublisher` port (docs/adr/0001, 0004, 0005)
+- `outbox` — transactional outbox entries and the poller that fans them out to Deliveries and publishes to Kafka, `outbox/application/PublishOutboxEntriesUseCase` (docs/adr/0003, 0004)
 - `idempotency` — the Redis-backed ingest-time replay cache (docs/adr/0002); infrastructure only, no domain layer of its own

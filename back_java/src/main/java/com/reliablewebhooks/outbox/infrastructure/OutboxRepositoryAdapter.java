@@ -23,4 +23,11 @@ class OutboxRepositoryAdapter implements OutboxRepository {
     public List<OutboxEntry> findAll() {
         return springDataRepository.findAll().stream().map(outboxMapper::toDomain).toList();
     }
+
+    @Override
+    public List<OutboxEntry> findUnpublishedBatch(int batchSize) {
+        return springDataRepository.findUnpublishedBatchForUpdateSkipLocked(batchSize).stream()
+                .map(outboxMapper::toDomain)
+                .toList();
+    }
 }

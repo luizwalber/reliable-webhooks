@@ -61,6 +61,11 @@ class GetEndpointUseCaseTest {
         public Page<Endpoint> findAllOrderByCreatedAtDesc(Pageable pageable) {
             return new PageImpl<>(List.of());
         }
+
+        @Override
+        public List<Endpoint> findAll() {
+            return List.of();
+        }
     }
 
     private static class SingleEndpointRepository extends EmptyEndpointRepository {

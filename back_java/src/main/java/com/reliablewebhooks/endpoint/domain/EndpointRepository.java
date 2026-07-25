@@ -1,5 +1,6 @@
 package com.reliablewebhooks.endpoint.domain;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -17,4 +18,7 @@ public interface EndpointRepository {
     void deleteById(UUID id);
 
     Page<Endpoint> findAllOrderByCreatedAtDesc(Pageable pageable);
+
+    /** Every registered Endpoint, unpaged — used by outbox fan-out (docs/adr/0001-fan-out-and-delivery-resource). */
+    List<Endpoint> findAll();
 }

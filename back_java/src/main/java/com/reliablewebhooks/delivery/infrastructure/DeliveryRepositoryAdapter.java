@@ -13,9 +13,16 @@ import org.springframework.stereotype.Component;
 class DeliveryRepositoryAdapter implements DeliveryRepository {
 
     private final SpringDataDeliveryRepository springDataRepository;
+    private final DeliveryMapper deliveryMapper;
+
+    @Override
+    public Delivery save(Delivery delivery) {
+        var saved = springDataRepository.save(deliveryMapper.toJpaEntity(delivery));
+        return deliveryMapper.toDomain(saved);
+    }
 
     @Override
     public Page<Delivery> findByEventId(UUID eventId, Pageable pageable) {
-        return springDataRepository.findByEventId(eventId, pageable).map(DeliveryMapper::toDomain);
+        return springDataRepository.findByEventId(eventId, pageable).map(deliveryMapper::toDomain);
     }
 }

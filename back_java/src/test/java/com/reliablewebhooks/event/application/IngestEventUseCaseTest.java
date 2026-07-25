@@ -80,5 +80,10 @@ class IngestEventUseCaseTest {
         public List<OutboxEntry> findAll() {
             return List.copyOf(outboxEntries);
         }
+
+        @Override
+        public List<OutboxEntry> findUnpublishedBatch(int batchSize) {
+            return outboxEntries.stream().filter(e -> !e.isPublished()).limit(batchSize).toList();
+        }
     }
 }

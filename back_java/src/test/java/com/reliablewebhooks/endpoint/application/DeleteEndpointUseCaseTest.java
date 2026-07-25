@@ -64,5 +64,10 @@ class DeleteEndpointUseCaseTest {
         public Page<Endpoint> findAllOrderByCreatedAtDesc(Pageable pageable) {
             return new PageImpl<>(List.copyOf(endpoints.values()));
         }
+
+        @Override
+        public List<Endpoint> findAll() {
+            return List.copyOf(endpoints.values());
+        }
     }
 }

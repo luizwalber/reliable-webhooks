@@ -7,5 +7,7 @@ import org.springframework.data.domain.Pageable;
 /** Domain port. Implemented by delivery.infrastructure.DeliveryRepositoryAdapter. */
 public interface DeliveryRepository {
 
+    Delivery save(Delivery delivery);
+
     Page<Delivery> findByEventId(UUID eventId, Pageable pageable);
 }
