@@ -13,6 +13,7 @@ import com.reliablewebhooks.event.domain.EventRepository;
 import com.reliablewebhooks.event.domain.EventState;
 import com.reliablewebhooks.outbox.domain.OutboxEntry;
 import com.reliablewebhooks.outbox.domain.OutboxRepository;
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -178,6 +179,11 @@ class PublishOutboxEntriesUseCaseTest {
         }
 
         @Override
+        public Optional<Delivery> findById(UUID id) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public Page<Delivery> findByEventId(UUID eventId, Pageable pageable) {
             throw new UnsupportedOperationException();
         }
@@ -187,6 +193,21 @@ class PublishOutboxEntriesUseCaseTest {
         @Override
         public void publish(Delivery delivery, int attemptNumber) {
             publishedMessages.add(new PublishedMessage(delivery.getId(), attemptNumber));
+        }
+
+        @Override
+        public boolean hasRetryBandFor(int attemptNumber) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public OffsetDateTime scheduleRetry(Delivery delivery, int attemptNumber) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void publishToDeadLetter(Delivery delivery, int attemptNumber) {
+            throw new UnsupportedOperationException();
         }
     }
 }

@@ -83,6 +83,11 @@ class ListDeliveriesForEventUseCaseTest {
         }
 
         @Override
+        public Optional<Delivery> findById(UUID id) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public Page<Delivery> findByEventId(UUID eventId, Pageable pageable) {
             return new PageImpl<>(List.of());
         }

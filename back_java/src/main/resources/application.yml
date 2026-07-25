@@ -24,19 +24,47 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      properties:
+        # Short session timeout so a rejoin after an abrupt JVM kill (e.g. a
+        # test run Surefire force-terminates) doesn't stall the next run's
+        # rebalance behind Kafka's 45s default zombie-member detection.
+        session.timeout.ms: ${KAFKA_CONSUMER_SESSION_TIMEOUT_MS:6000}
+        heartbeat.interval.ms: ${KAFKA_CONSUMER_HEARTBEAT_INTERVAL_MS:2000}
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   servlet:
     context-path: /v1
 
 webhook:
   outbox:
     # docs/adr/0003-transactional-outbox
-    poll-interval-ms: 1000
-    batch-size: 50
+    poll-interval-ms: ${OUTBOX_POLL_INTERVAL_MS:1000}
+    batch-size: ${OUTBOX_BATCH_SIZE:50}
   kafka:
-    # docs/adr/0004-retry-policy-and-topic-topology — only the main topic
-    # exists this slice; the retry-band and DLQ topics are created when a
-    # consumer/publisher actually needs them.
+    # docs/adr/0004-retry-policy-and-topic-topology — topic names are an
+    # architecture decision, not deployment config, so they stay fixed
+    # here rather than becoming env-configurable.
     main-topic: webhook.delivery.main
+    dlq-topic: webhook.delivery.dlq
+    # Topics the delivery worker's @KafkaListener consumes — main plus every
+    # retry band. DLQ is a terminal sink; nothing consumes it this slice.
+    consumed-topics: webhook.delivery.main,webhook.delivery.retry.30s,webhook.delivery.retry.5m,webhook.delivery.retry.30m
+  retry:
+    # docs/adr/0004-retry-policy-and-topic-topology — fast demo-profile
+    # delays (~10s/30s/2m), not the topic names' illustrative 30s/5m/30m
+    # values. Band count (3) plus the first immediate attempt on
+    # main-topic gives the "4 attempts total" budget — no separate
+    # max-attempts property needed.
+    jitter: ${RETRY_JITTER:0.2}
+    bands:
+      - topic: webhook.delivery.retry.30s
+        delay-ms: ${RETRY_DELAY_BAND_1_MS:10000}
+      - topic: webhook.delivery.retry.5m
+        delay-ms: ${RETRY_DELAY_BAND_2_MS:30000}
+      - topic: webhook.delivery.retry.30m
+        delay-ms: ${RETRY_DELAY_BAND_3_MS:120000}
+  delivery:
+    # HTTP call timeout for the outbound signed delivery (docs/adr/0007-hmac-signing).
+    http-timeout-ms: ${DELIVERY_HTTP_TIMEOUT_MS:3000}
