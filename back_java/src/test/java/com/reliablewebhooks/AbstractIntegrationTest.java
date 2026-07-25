@@ -16,23 +16,34 @@ import org.springframework.test.web.servlet.MockMvc;
  * tests (see docs/adr/0014-docker-compose-test-seam.md for why this
  * replaced Testcontainers-managed containers).
  *
- * The live delivery-worker Kafka consumer is off by default here — every
- * test class fans out into the same persistent, ever-accumulating test
- * database (docs/adr/0014), so a live consumer would race real HTTP calls
- * against every endpoint any other test class has ever registered.
- * DeliveryWorkerTest opts back in with its own @TestPropertySource,
- * which gives it an isolated Spring context (see spec issue #20).
- *
- * The outbox poller's @Scheduled auto-trigger is off for the same reason —
+ * Every live background process (a @KafkaListener, a @Scheduled poller,
+ * any future one) is gated behind a webhook.background.<process-name>.enabled
+ * property, default true in production — see spec issue #27. All of them
+ * are forced false here: every test class fans out into the same
+ * persistent, ever-accumulating test database (docs/adr/0014), and
  * fan-out targets every registered Endpoint (docs/adr/0001), so a live
- * poller ticking in the background would fan any test's event out to
- * every other test's endpoints too, inflating Delivery counts non-
- * deterministically. Every test that needs the poller calls
- * PublishOutboxEntriesUseCase.pollOnce() directly instead.
+ * background process would race real HTTP calls, or inflate Delivery
+ * counts, against every endpoint/event any OTHER test class has ever
+ * registered/ingested — not just its own.
+ *
+ * Currently gated this way:
+ * - webhook.background.delivery-worker.enabled (DeliveryAttemptConsumer's
+ *   @KafkaListener) — DeliveryWorkerTest opts back in with its own
+ *   @TestPropertySource, which gives it an isolated Spring context.
+ * - webhook.background.outbox-poller.enabled (PublishOutboxEntriesUseCase's
+ *   @Scheduled trigger) — every test that needs the poller calls
+ *   pollOnce() directly instead, same as the Kafka-consumer tests do.
+ *
+ * Adding a new background process? Follow the same convention: a
+ * webhook.background.<name>.enabled property (default true), forced
+ * false in the @TestPropertySource below, with a one-line addition to
+ * the list above — don't invent a new naming shape.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
-@TestPropertySource(properties = {"webhook.delivery-worker.enabled=false", "webhook.outbox.scheduler-enabled=false"})
+@TestPropertySource(properties = {
+        "webhook.background.delivery-worker.enabled=false",
+        "webhook.background.outbox-poller.enabled=false"})
 public abstract class AbstractIntegrationTest {
 
     protected static final String OPENAPI_SPEC_PATH = "../openapi.yaml";
