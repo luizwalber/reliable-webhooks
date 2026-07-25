@@ -34,8 +34,7 @@ public class RetryDeliveryUseCase {
             throw new ConflictException("Delivery " + deliveryId + " is not DEAD — cannot be manually retried");
         }
 
-        delivery.retryManually();
-        Delivery saved = deliveryRepository.save(delivery);
+        Delivery saved = deliveryRepository.apply(delivery, Delivery::retryManually);
         deliveryPublisher.publish(saved, 1);
         return DeliveryView.from(saved);
     }

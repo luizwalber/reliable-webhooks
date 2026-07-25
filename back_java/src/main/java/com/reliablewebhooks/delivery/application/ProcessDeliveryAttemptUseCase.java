@@ -62,8 +62,7 @@ public class ProcessDeliveryAttemptUseCase {
         Event event = eventRepository.findById(command.eventId())
                 .orElseThrow(() -> new IllegalStateException("Event not found: " + command.eventId()));
 
-        delivery.startDelivering();
-        deliveryRepository.save(delivery);
+        deliveryRepository.apply(delivery, Delivery::startDelivering);
 
         Attempt attempt = Attempt.start(delivery.getId(), command.attemptNumber(), command.topic());
         attemptRepository.save(attempt);
@@ -74,8 +73,7 @@ public class ProcessDeliveryAttemptUseCase {
 
         if (result.outcome() == AttemptOutcome.SUCCESS) {
             circuitBreaker.recordSuccess(command.endpointId());
-            delivery.markDelivered();
-            deliveryRepository.save(delivery);
+            deliveryRepository.apply(delivery, Delivery::markDelivered);
             dedupChecker.markDelivered(command.eventId(), command.endpointId());
             endpoint.recordSuccess();
             endpoint.updateCircuitBreakerState(circuitBreaker.currentState(command.endpointId()));
@@ -98,12 +96,10 @@ public class ProcessDeliveryAttemptUseCase {
         int nextAttemptNumber = command.attemptNumber() + 1;
         if (deliveryPublisher.hasRetryBandFor(nextAttemptNumber)) {
             OffsetDateTime nextAttemptAt = deliveryPublisher.scheduleRetry(delivery, nextAttemptNumber);
-            delivery.scheduleRetry(nextAttemptAt);
-            deliveryRepository.save(delivery);
+            deliveryRepository.apply(delivery, d -> d.scheduleRetry(nextAttemptAt));
             endpointRepository.save(endpoint);
         } else {
-            delivery.markDead();
-            deliveryRepository.save(delivery);
+            deliveryRepository.apply(delivery, Delivery::markDead);
             endpoint.recordFailure();
             endpointRepository.save(endpoint);
             deliveryPublisher.publishToDeadLetter(delivery, command.attemptNumber());
