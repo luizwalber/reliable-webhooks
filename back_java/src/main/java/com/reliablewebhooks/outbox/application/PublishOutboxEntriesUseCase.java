@@ -14,8 +14,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Drains the outbox: for each unpublished row, fans the Event out to every
@@ -24,12 +22,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * then marks the outbox row published and the Event PUBLISHED
  * (docs/adr/0003-transactional-outbox).
  *
- * Kafka sends are deferred to run after the transaction commits, not
- * inline mid-transaction: KafkaTemplate.send() doesn't participate in the
- * Postgres transaction, so a fast consumer can otherwise read a Delivery
- * by ID before this transaction's insert is even visible — a spurious
- * "not found" that a real delivery worker (see delivery-worker spec issue
- * #20) would hit on essentially every message.
+ * DeliveryPublisher's implementation defers each send until this
+ * transaction commits — see KafkaDeliveryPublisher's javadoc — so this
+ * class just calls publish() directly per created Delivery, same as
+ * every other DeliveryPublisher caller.
  *
  * Constructor is hand-written (not @RequiredArgsConstructor, see
  * .claude/lombok.mdc) because batchSize is @Value-injected.
@@ -108,19 +104,6 @@ public class PublishOutboxEntriesUseCase {
             eventRepository.save(event);
         });
 
-        publishAfterCommit(createdDeliveries);
-    }
-
-    private void publishAfterCommit(List<Delivery> createdDeliveries) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            createdDeliveries.forEach(delivery -> deliveryPublisher.publish(delivery, 1));
-            return;
-        }
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                createdDeliveries.forEach(delivery -> deliveryPublisher.publish(delivery, 1));
-            }
-        });
+        createdDeliveries.forEach(delivery -> deliveryPublisher.publish(delivery, 1));
     }
 }
