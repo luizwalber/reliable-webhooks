@@ -2,6 +2,7 @@ package com.reliablewebhooks.delivery.infrastructure;
 
 import com.reliablewebhooks.delivery.domain.Delivery;
 import com.reliablewebhooks.delivery.domain.DeliveryRepository;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -19,6 +20,11 @@ class DeliveryRepositoryAdapter implements DeliveryRepository {
     public Delivery save(Delivery delivery) {
         var saved = springDataRepository.save(deliveryMapper.toJpaEntity(delivery));
         return deliveryMapper.toDomain(saved);
+    }
+
+    @Override
+    public Optional<Delivery> findById(UUID id) {
+        return springDataRepository.findById(id).map(deliveryMapper::toDomain);
     }
 
     @Override

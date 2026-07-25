@@ -25,4 +25,33 @@ class EndpointTest {
 
         assertThat(endpoint.successRate()).isEqualTo(0.75);
     }
+
+    @Test
+    void recordSuccessIncrementsSuccessCount() {
+        Endpoint endpoint = Endpoint.register("https://example.com/hook", null, "secret");
+
+        endpoint.recordSuccess();
+
+        assertThat(endpoint.getSuccessCount()).isEqualTo(1);
+        assertThat(endpoint.getDeadCount()).isZero();
+    }
+
+    @Test
+    void recordFailureIncrementsDeadCount() {
+        Endpoint endpoint = Endpoint.register("https://example.com/hook", null, "secret");
+
+        endpoint.recordFailure();
+
+        assertThat(endpoint.getDeadCount()).isEqualTo(1);
+        assertThat(endpoint.getSuccessCount()).isZero();
+    }
+
+    @Test
+    void updateCircuitBreakerStateSyncsTheReadModelSnapshot() {
+        Endpoint endpoint = Endpoint.register("https://example.com/hook", null, "secret");
+
+        endpoint.updateCircuitBreakerState(CircuitBreakerState.OPEN);
+
+        assertThat(endpoint.getCircuitBreakerState()).isEqualTo(CircuitBreakerState.OPEN);
+    }
 }

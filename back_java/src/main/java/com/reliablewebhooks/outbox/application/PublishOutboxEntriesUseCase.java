@@ -8,11 +8,14 @@ import com.reliablewebhooks.endpoint.domain.EndpointRepository;
 import com.reliablewebhooks.event.domain.EventRepository;
 import com.reliablewebhooks.outbox.domain.OutboxEntry;
 import com.reliablewebhooks.outbox.domain.OutboxRepository;
+import java.util.ArrayList;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
  * Drains the outbox: for each unpublished row, fans the Event out to every
@@ -20,6 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
  * publishes one Kafka message per Delivery (docs/adr/0004-retry-policy-and-topic-topology),
  * then marks the outbox row published and the Event PUBLISHED
  * (docs/adr/0003-transactional-outbox).
+ *
+ * Kafka sends are deferred to run after the transaction commits, not
+ * inline mid-transaction: KafkaTemplate.send() doesn't participate in the
+ * Postgres transaction, so a fast consumer can otherwise read a Delivery
+ * by ID before this transaction's insert is even visible — a spurious
+ * "not found" that a real delivery worker (see delivery-worker spec issue
+ * #20) would hit on essentially every message.
  *
  * Constructor is hand-written (not @RequiredArgsConstructor, see
  * .claude/lombok.mdc) because batchSize is @Value-injected.
@@ -69,9 +79,9 @@ public class PublishOutboxEntriesUseCase {
     }
 
     private void publishEntry(OutboxEntry entry, List<Endpoint> endpoints) {
+        List<Delivery> createdDeliveries = new ArrayList<>();
         for (Endpoint endpoint : endpoints) {
-            Delivery delivery = deliveryRepository.save(Delivery.schedule(entry.getEventId(), endpoint.getId()));
-            deliveryPublisher.publish(delivery, 1);
+            createdDeliveries.add(deliveryRepository.save(Delivery.schedule(entry.getEventId(), endpoint.getId())));
         }
 
         entry.markPublished();
@@ -80,6 +90,21 @@ public class PublishOutboxEntriesUseCase {
         eventRepository.findById(entry.getEventId()).ifPresent(event -> {
             event.markPublished();
             eventRepository.save(event);
+        });
+
+        publishAfterCommit(createdDeliveries);
+    }
+
+    private void publishAfterCommit(List<Delivery> createdDeliveries) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            createdDeliveries.forEach(delivery -> deliveryPublisher.publish(delivery, 1));
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                createdDeliveries.forEach(delivery -> deliveryPublisher.publish(delivery, 1));
+            }
         });
     }
 }

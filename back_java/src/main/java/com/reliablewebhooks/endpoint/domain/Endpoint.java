@@ -3,21 +3,21 @@ package com.reliablewebhooks.endpoint.domain;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 /** Pure domain entity — no persistence framework, no HTTP concerns. */
 @Getter
-@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Endpoint {
 
     private final UUID id;
     private final String url;
     private final String description;
     private final String secret;
-    private final CircuitBreakerState circuitBreakerState;
-    private final int successCount;
-    private final int deadCount;
+    private CircuitBreakerState circuitBreakerState;
+    private int successCount;
+    private int deadCount;
     private final OffsetDateTime createdAt;
 
     /** Register a new Endpoint. The secret is generated once, by a SecretGenerator port, and never rotated. */
@@ -38,5 +38,20 @@ public class Endpoint {
             return null;
         }
         return (double) successCount / total;
+    }
+
+    /** A Delivery to this Endpoint reached DELIVERED (docs/adr/0009-metrics). */
+    public void recordSuccess() {
+        this.successCount++;
+    }
+
+    /** A Delivery to this Endpoint reached DEAD (docs/adr/0009-metrics). */
+    public void recordFailure() {
+        this.deadCount++;
+    }
+
+    /** Sync the read-model snapshot with the live circuit-breaker registry state (docs/adr/0006-circuit-breaker). */
+    public void updateCircuitBreakerState(CircuitBreakerState circuitBreakerState) {
+        this.circuitBreakerState = circuitBreakerState;
     }
 }
