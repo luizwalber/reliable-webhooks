@@ -31,6 +31,10 @@ Two pragmatic exceptions, made deliberately rather than by omission:
 
 Getters and constructors across all four layers are Lombok-generated (`@Getter`, `@RequiredArgsConstructor`/`@AllArgsConstructor`, `@NoArgsConstructor` on JPA entities) rather than hand-written — see `.claude/lombok.mdc`. This is a boilerplate-reduction choice, not a layering exception: Lombok's generated code still respects each layer's constructor-visibility and field rules (e.g. domain entities keep private construction behind named static factories).
 
+The JPA-entity-to-domain-entity mapping in each module's `infrastructure` layer (`EventMapper`, `EndpointMapper`, `OutboxMapper`) is MapStruct-generated for the `domain → JPA` direction, hand-written for `JPA → domain` (delegating to the domain entity's own `reconstitute()` factory) — see `.claude/mapstruct.mdc`. `DeliveryMapper` stays a plain utility since only one direction is in use this slice.
+
+An architecture review (2026-07-25) found `EventController.ingest()` shallow — cache-lookup, use-case call, JSON serialization, and cache-store inlined in one method, untestable except through the full Testcontainers seam. Extracted into `IdempotentReplay` (`event/presentation`), a small module owning the replay sequencing with its own plain-Java unit test. `EventController` now supplies only what to compute on a cache miss.
+
 ## Consequences
 
 - Every use case is testable with plain-Java fakes of its domain ports, no Spring context or database required — exercised by unit tests under `back_java/src/test/.../application/` and `.../domain/` for every use case and domain rule.

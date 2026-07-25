@@ -9,7 +9,7 @@ alwaysApply: true
 
 1. Read `CONTEXT.md` (domain glossary) and `docs/adr/` for the architecture decisions covering the area you're about to touch.
 2. Check the [wayfinder map](https://github.com/luizwalber/reliable-webhooks/issues/1) and its closed tickets (issues #2–#16) for the reasoning behind a decision, if the ADR's summary isn't enough.
-3. Follow `.claude/clean-architecture.mdc` for layer boundaries and `.claude/lombok.mdc` for boilerplate conventions within `back_java/`.
+3. Follow `.claude/clean-architecture.mdc` for layer boundaries, `.claude/lombok.mdc` for boilerplate conventions, and `.claude/mapstruct.mdc` for entity-mapping conventions within `back_java/`.
 
 ## After completing work
 

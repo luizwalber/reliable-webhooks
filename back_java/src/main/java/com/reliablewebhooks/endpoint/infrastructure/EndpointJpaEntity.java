@@ -13,10 +13,13 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
+/** Setters exist for MapStruct's no-arg-constructor-plus-setters mapping strategy — see .claude/mapstruct.mdc. */
 @Entity
 @Table(name = "endpoints")
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class EndpointJpaEntity {

@@ -15,16 +15,17 @@ import org.springframework.stereotype.Component;
 class EventRepositoryAdapter implements EventRepository {
 
     private final SpringDataEventRepository springDataRepository;
+    private final EventMapper eventMapper;
 
     @Override
     public Event save(Event event) {
-        var saved = springDataRepository.save(EventMapper.toJpaEntity(event));
-        return EventMapper.toDomain(saved);
+        var saved = springDataRepository.save(eventMapper.toJpaEntity(event));
+        return eventMapper.toDomain(saved);
     }
 
     @Override
     public Optional<Event> findById(UUID id) {
-        return springDataRepository.findById(id).map(EventMapper::toDomain);
+        return springDataRepository.findById(id).map(eventMapper::toDomain);
     }
 
     @Override
@@ -39,11 +40,11 @@ class EventRepositoryAdapter implements EventRepository {
 
     @Override
     public List<Event> findAll() {
-        return springDataRepository.findAll().stream().map(EventMapper::toDomain).toList();
+        return springDataRepository.findAll().stream().map(eventMapper::toDomain).toList();
     }
 
     @Override
     public Page<Event> findAllOrderByReceivedAtDesc(Pageable pageable) {
-        return springDataRepository.findAllByOrderByReceivedAtDesc(pageable).map(EventMapper::toDomain);
+        return springDataRepository.findAllByOrderByReceivedAtDesc(pageable).map(eventMapper::toDomain);
     }
 }

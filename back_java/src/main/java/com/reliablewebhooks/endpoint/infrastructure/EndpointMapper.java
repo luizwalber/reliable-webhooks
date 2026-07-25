@@ -1,25 +1,24 @@
 package com.reliablewebhooks.endpoint.infrastructure;
 
 import com.reliablewebhooks.endpoint.domain.Endpoint;
+import org.mapstruct.Mapper;
 
-final class EndpointMapper {
+/**
+ * domain → JPA is MapStruct-generated (property-name matched onto
+ * EndpointJpaEntity's setters). JPA → domain stays hand-written, delegating
+ * to Endpoint.reconstitute() so the domain's controlled-construction
+ * factory — not MapStruct — remains the single place that assembles an
+ * Endpoint. See .claude/mapstruct.mdc.
+ */
+@Mapper(componentModel = "spring")
+interface EndpointMapper {
 
-    private EndpointMapper() {
-    }
+    EndpointJpaEntity toJpaEntity(Endpoint endpoint);
 
-    static EndpointJpaEntity toJpaEntity(Endpoint endpoint) {
-        return new EndpointJpaEntity(
-                endpoint.getId(),
-                endpoint.getUrl(),
-                endpoint.getDescription(),
-                endpoint.getSecret(),
-                endpoint.getCircuitBreakerState(),
-                endpoint.getSuccessCount(),
-                endpoint.getDeadCount(),
-                endpoint.getCreatedAt());
-    }
-
-    static Endpoint toDomain(EndpointJpaEntity jpaEntity) {
+    default Endpoint toDomain(EndpointJpaEntity jpaEntity) {
+        if (jpaEntity == null) {
+            return null;
+        }
         return Endpoint.reconstitute(
                 jpaEntity.getId(),
                 jpaEntity.getUrl(),

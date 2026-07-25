@@ -1,13 +1,9 @@
 package com.reliablewebhooks.event.presentation;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.reliablewebhooks.delivery.application.ListDeliveriesForEventUseCase;
 import com.reliablewebhooks.delivery.presentation.dto.DeliveryResponse;
 import com.reliablewebhooks.event.application.EventView;
 import com.reliablewebhooks.event.application.GetEventUseCase;
-import com.reliablewebhooks.event.application.IdempotencyGateway;
-import com.reliablewebhooks.event.application.IdempotencyGateway.CachedReplay;
 import com.reliablewebhooks.event.application.IngestEventCommand;
 import com.reliablewebhooks.event.application.IngestEventUseCase;
 import com.reliablewebhooks.event.application.ListEventsUseCase;
@@ -20,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -39,36 +34,23 @@ public class EventController {
     private final GetEventUseCase getEventUseCase;
     private final ListEventsUseCase listEventsUseCase;
     private final ListDeliveriesForEventUseCase listDeliveriesForEventUseCase;
-    private final IdempotencyGateway idempotencyGateway;
-    private final ObjectMapper objectMapper;
+    private final IdempotentReplay idempotentReplay;
 
     /**
      * A retried request with the same Idempotency-Key (scoped to the
      * calling producer) replays the exact original response rather than
      * creating a duplicate event (docs/adr/0002-idempotency-and-delivery-guarantees).
-     * The replay check is an HTTP delivery-mechanism concern, so it lives
-     * here in presentation rather than inside the use case.
+     * The replay sequencing itself lives in IdempotentReplay — this method
+     * only supplies what to compute on a cache miss.
      */
     @PostMapping
     public ResponseEntity<String> ingest(
             @RequestHeader("Idempotency-Key") String idempotencyKey,
             @RequestHeader("X-Producer-Id") String producerId,
-            @Valid @RequestBody EventIngestRequest request) throws JsonProcessingException {
+            @Valid @RequestBody EventIngestRequest request) {
 
-        var cached = idempotencyGateway.find(producerId, idempotencyKey);
-        if (cached.isPresent()) {
-            return replay(cached.get());
-        }
-
-        EventView view = ingestEventUseCase.execute(new IngestEventCommand(producerId, idempotencyKey, request.eventType(), request.payload()));
-        String body = objectMapper.writeValueAsString(EventResponse.from(view));
-        idempotencyGateway.store(producerId, idempotencyKey, new CachedReplay(HttpStatus.ACCEPTED.value(), body));
-
-        return ResponseEntity.status(HttpStatus.ACCEPTED).contentType(MediaType.APPLICATION_JSON).body(body);
-    }
-
-    private ResponseEntity<String> replay(CachedReplay cached) {
-        return ResponseEntity.status(cached.status()).contentType(MediaType.APPLICATION_JSON).body(cached.body());
+        return idempotentReplay.respond(producerId, idempotencyKey, HttpStatus.ACCEPTED, () -> EventResponse.from(
+                ingestEventUseCase.execute(new IngestEventCommand(producerId, idempotencyKey, request.eventType(), request.payload()))));
     }
 
     @GetMapping

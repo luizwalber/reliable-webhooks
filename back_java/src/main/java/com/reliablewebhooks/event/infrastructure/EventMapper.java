@@ -1,24 +1,24 @@
 package com.reliablewebhooks.event.infrastructure;
 
 import com.reliablewebhooks.event.domain.Event;
+import org.mapstruct.Mapper;
 
-final class EventMapper {
+/**
+ * domain → JPA is MapStruct-generated (property-name matched onto
+ * EventJpaEntity's setters). JPA → domain stays hand-written, delegating to
+ * Event.reconstitute() so the domain's controlled-construction factory —
+ * not MapStruct — remains the single place that assembles an Event. See
+ * .claude/mapstruct.mdc.
+ */
+@Mapper(componentModel = "spring")
+interface EventMapper {
 
-    private EventMapper() {
-    }
+    EventJpaEntity toJpaEntity(Event event);
 
-    static EventJpaEntity toJpaEntity(Event event) {
-        return new EventJpaEntity(
-                event.getId(),
-                event.getEventType(),
-                event.getProducerId(),
-                event.getIdempotencyKey(),
-                event.getState(),
-                event.getPayload(),
-                event.getReceivedAt());
-    }
-
-    static Event toDomain(EventJpaEntity jpaEntity) {
+    default Event toDomain(EventJpaEntity jpaEntity) {
+        if (jpaEntity == null) {
+            return null;
+        }
         return Event.reconstitute(
                 jpaEntity.getId(),
                 jpaEntity.getEventType(),

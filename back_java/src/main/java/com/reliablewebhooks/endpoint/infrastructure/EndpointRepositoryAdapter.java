@@ -14,16 +14,17 @@ import org.springframework.stereotype.Component;
 class EndpointRepositoryAdapter implements EndpointRepository {
 
     private final SpringDataEndpointRepository springDataRepository;
+    private final EndpointMapper endpointMapper;
 
     @Override
     public Endpoint save(Endpoint endpoint) {
-        var saved = springDataRepository.save(EndpointMapper.toJpaEntity(endpoint));
-        return EndpointMapper.toDomain(saved);
+        var saved = springDataRepository.save(endpointMapper.toJpaEntity(endpoint));
+        return endpointMapper.toDomain(saved);
     }
 
     @Override
     public Optional<Endpoint> findById(UUID id) {
-        return springDataRepository.findById(id).map(EndpointMapper::toDomain);
+        return springDataRepository.findById(id).map(endpointMapper::toDomain);
     }
 
     @Override
@@ -38,6 +39,6 @@ class EndpointRepositoryAdapter implements EndpointRepository {
 
     @Override
     public Page<Endpoint> findAllOrderByCreatedAtDesc(Pageable pageable) {
-        return springDataRepository.findAllByOrderByCreatedAtDesc(pageable).map(EndpointMapper::toDomain);
+        return springDataRepository.findAllByOrderByCreatedAtDesc(pageable).map(endpointMapper::toDomain);
     }
 }

@@ -1,23 +1,24 @@
 package com.reliablewebhooks.outbox.infrastructure;
 
 import com.reliablewebhooks.outbox.domain.OutboxEntry;
+import org.mapstruct.Mapper;
 
-final class OutboxMapper {
+/**
+ * domain → JPA is MapStruct-generated (property-name matched onto
+ * OutboxJpaEntity's setters). JPA → domain stays hand-written, delegating
+ * to OutboxEntry.reconstitute() so the domain's controlled-construction
+ * factory — not MapStruct — remains the single place that assembles an
+ * OutboxEntry. See .claude/mapstruct.mdc.
+ */
+@Mapper(componentModel = "spring")
+interface OutboxMapper {
 
-    private OutboxMapper() {
-    }
+    OutboxJpaEntity toJpaEntity(OutboxEntry entry);
 
-    static OutboxJpaEntity toJpaEntity(OutboxEntry entry) {
-        return new OutboxJpaEntity(
-                entry.getId(),
-                entry.getEventId(),
-                entry.getPayload(),
-                entry.isPublished(),
-                entry.getCreatedAt(),
-                entry.getPublishedAt());
-    }
-
-    static OutboxEntry toDomain(OutboxJpaEntity jpaEntity) {
+    default OutboxEntry toDomain(OutboxJpaEntity jpaEntity) {
+        if (jpaEntity == null) {
+            return null;
+        }
         return OutboxEntry.reconstitute(
                 jpaEntity.getId(),
                 jpaEntity.getEventId(),
