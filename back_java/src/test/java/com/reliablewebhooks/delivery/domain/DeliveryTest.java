@@ -65,7 +65,7 @@ class DeliveryTest {
     }
 
     @Test
-    void manualRetryAfterDeadReenters() {
+    void scheduleRetryAfterDeadReenters() {
         Delivery delivery = Delivery.schedule(UUID.randomUUID(), UUID.randomUUID());
         delivery.startDelivering();
         delivery.markDead();
@@ -75,5 +75,18 @@ class DeliveryTest {
 
         assertThat(delivery.getState()).isEqualTo(DeliveryState.SCHEDULED);
         assertThat(delivery.getAttemptCount()).isEqualTo(2);
+    }
+
+    @Test
+    void retryManuallyResetsAttemptCountAndSchedulesImmediately() {
+        Delivery delivery = Delivery.schedule(UUID.randomUUID(), UUID.randomUUID());
+        delivery.startDelivering();
+        delivery.markDead();
+
+        delivery.retryManually();
+
+        assertThat(delivery.getState()).isEqualTo(DeliveryState.SCHEDULED);
+        assertThat(delivery.getAttemptCount()).isZero();
+        assertThat(delivery.getNextAttemptAt()).isNotNull();
     }
 }

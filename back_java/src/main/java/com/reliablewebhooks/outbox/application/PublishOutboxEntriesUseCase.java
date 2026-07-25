@@ -43,6 +43,7 @@ public class PublishOutboxEntriesUseCase {
     private final DeliveryRepository deliveryRepository;
     private final DeliveryPublisher deliveryPublisher;
     private final int batchSize;
+    private final boolean schedulerEnabled;
 
     public PublishOutboxEntriesUseCase(
             OutboxRepository outboxRepository,
@@ -50,17 +51,30 @@ public class PublishOutboxEntriesUseCase {
             EndpointRepository endpointRepository,
             DeliveryRepository deliveryRepository,
             DeliveryPublisher deliveryPublisher,
-            @Value("${webhook.outbox.batch-size}") int batchSize) {
+            @Value("${webhook.outbox.batch-size}") int batchSize,
+            @Value("${webhook.outbox.scheduler-enabled:true}") boolean schedulerEnabled) {
         this.outboxRepository = outboxRepository;
         this.eventRepository = eventRepository;
         this.endpointRepository = endpointRepository;
         this.deliveryRepository = deliveryRepository;
         this.deliveryPublisher = deliveryPublisher;
         this.batchSize = batchSize;
+        this.schedulerEnabled = schedulerEnabled;
     }
 
+    /**
+     * Off by default in the shared test context (webhook.outbox.scheduler-enabled=false,
+     * see AbstractIntegrationTest) — every integration test ingests events and
+     * registers endpoints, and fan-out targets EVERY registered Endpoint
+     * (docs/adr/0001), so a live scheduled poller would fan any test's event
+     * out to every other test's endpoints too, silently inflating Delivery
+     * counts. Tests call pollOnce() directly instead (see its own javadoc).
+     */
     @Scheduled(fixedDelayString = "${webhook.outbox.poll-interval-ms}")
     public void poll() {
+        if (!schedulerEnabled) {
+            return;
+        }
         pollOnce();
     }
 

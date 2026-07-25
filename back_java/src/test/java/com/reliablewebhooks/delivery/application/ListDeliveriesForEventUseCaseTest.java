@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.reliablewebhooks.delivery.domain.Delivery;
 import com.reliablewebhooks.delivery.domain.DeliveryRepository;
+import com.reliablewebhooks.delivery.domain.DeliveryState;
 import com.reliablewebhooks.event.domain.Event;
 import com.reliablewebhooks.event.domain.EventRepository;
 import com.reliablewebhooks.shared.domain.NotFoundException;
@@ -88,8 +89,18 @@ class ListDeliveriesForEventUseCaseTest {
         }
 
         @Override
+        public boolean existsById(UUID id) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public Page<Delivery> findByEventId(UUID eventId, Pageable pageable) {
             return new PageImpl<>(List.of());
+        }
+
+        @Override
+        public Page<Delivery> search(DeliveryState state, UUID endpointId, Pageable pageable) {
+            throw new UnsupportedOperationException();
         }
     }
 }

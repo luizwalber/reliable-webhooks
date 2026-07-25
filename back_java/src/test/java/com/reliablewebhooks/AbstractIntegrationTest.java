@@ -22,10 +22,17 @@ import org.springframework.test.web.servlet.MockMvc;
  * against every endpoint any other test class has ever registered.
  * DeliveryWorkerTest opts back in with its own @TestPropertySource,
  * which gives it an isolated Spring context (see spec issue #20).
+ *
+ * The outbox poller's @Scheduled auto-trigger is off for the same reason —
+ * fan-out targets every registered Endpoint (docs/adr/0001), so a live
+ * poller ticking in the background would fan any test's event out to
+ * every other test's endpoints too, inflating Delivery counts non-
+ * deterministically. Every test that needs the poller calls
+ * PublishOutboxEntriesUseCase.pollOnce() directly instead.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
 @AutoConfigureMockMvc
-@TestPropertySource(properties = "webhook.delivery-worker.enabled=false")
+@TestPropertySource(properties = {"webhook.delivery-worker.enabled=false", "webhook.outbox.scheduler-enabled=false"})
 public abstract class AbstractIntegrationTest {
 
     protected static final String OPENAPI_SPEC_PATH = "../openapi.yaml";
