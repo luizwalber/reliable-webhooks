@@ -1,0 +1,5 @@
+target/
+.env
+.mvn/
+*.md
+docker-compose.test.yml

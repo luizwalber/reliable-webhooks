@@ -1,0 +1,14 @@
+{
+  "name": "reliable-webhooks-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone simulated-consumer service (docs/adr/0010-simulated-consumers) — four fixed HTTP routes registered as ordinary Endpoints to demo retry/DLQ/circuit-breaker behavior on demand. Internal demo infrastructure only, not part of the public API contract.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
