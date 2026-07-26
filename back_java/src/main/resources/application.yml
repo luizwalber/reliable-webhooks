@@ -2,7 +2,12 @@ spring:
   application:
     name: reliable-webhooks-backend
   datasource:
-    url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:reliable_webhooks}
+    # *_HOST defaults to localhost for local `mvn test`/dev (docs/adr/0014-docker-compose-test-seam,
+    # where the JVM runs on the host against compose-exposed ports); the
+    # runtime docker-compose.yml (docs/adr/0011-docker-compose-topology)
+    # overrides *_HOST to the container service name (postgres/redis/kafka)
+    # since the backend runs inside the same compose network there.
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:reliable_webhooks}
     username: ${POSTGRES_USER:reliable_webhooks}
     password: ${POSTGRES_PASSWORD:reliable_webhooks}
   jpa:
@@ -11,7 +16,7 @@ spring:
     open-in-view: false
   data:
     redis:
-      host: localhost
+      host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
     web:
       pageable:
@@ -20,11 +25,21 @@ spring:
   flyway:
     enabled: true
   kafka:
-    bootstrap-servers: localhost:${KAFKA_PORT:9092}
+    bootstrap-servers: ${KAFKA_HOST:localhost}:${KAFKA_PORT:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
     consumer:
+      # Kafka's own client default is "latest" — for a consumer group's
+      # very first-ever position resolution (no committed offset yet),
+      # that means "start after whatever's already on the topic right
+      # now," silently skipping any message produced before this
+      # resolution completes. On a single-broker KRaft cold start, the
+      # delivery-worker's consumer group can still be settling its own
+      # coordinator election (transient NOT_COORDINATOR retries) at the
+      # exact moment the outbox poller's very first message lands —
+      # "earliest" means that race can never cost a message.
+      auto-offset-reset: earliest
       properties:
         # Short session timeout so a rejoin after an abrupt JVM kill (e.g. a
         # test run Surefire force-terminates) doesn't stall the next run's
@@ -36,6 +51,19 @@ server:
   port: ${SERVER_PORT:8080}
   servlet:
     context-path: /v1
+
+management:
+  # Exposed under /v1/actuator/health (context-path applies) — the runtime
+  # docker-compose.yml's healthcheck target for the backend container
+  # (docs/adr/0011-docker-compose-topology). Only health is exposed;
+  # nothing else is needed for this demo's operational surface.
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
 
 webhook:
   outbox:

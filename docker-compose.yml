@@ -1,0 +1,117 @@
+# The runtime environment (docs/adr/0011-docker-compose-topology) — brings
+# up the whole backend + infra + simulator with one `docker compose up`.
+# NOT the test-only infra at back_java/docker-compose.test.yml
+# (docs/adr/0014-docker-compose-test-seam) — that one stays separate and
+# is unaffected by this file.
+#
+# `frontend` (docs/adr/0011) is deferred to a follow-up: front_react/ has
+# no buildable app yet. 5 services this slice: postgres, redis, kafka,
+# backend, simulator.
+#
+# Reads credentials/ports from .env (gitignored — copy .env.example to
+# .env first if you haven't). Only `backend` gets a host port mapping;
+# postgres/redis/kafka/simulator stay internal to the compose network —
+# nothing outside the app needs to reach them directly (use `docker
+# compose exec <service> ...` to inspect them if you need to).
+#
+# Bring the whole environment up:
+#   docker compose up -d --build
+# Tear down (drops data too):
+#   docker compose down -v
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  # KRaft, single broker, matching docs/adr/0011-docker-compose-topology.
+  # Single PLAINTEXT listener only — unlike docker-compose.test.yml, nothing
+  # outside the compose network needs to reach Kafka here, since the
+  # backend runs inside it too.
+  kafka:
+    image: apache/kafka:3.8.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:19093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:19093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      # --list (not just --broker-api-versions) forces a real metadata
+      # fetch, which is a better proxy for "the group coordinator has
+      # actually stabilized" than broker-api-versions responding — a
+      # single-broker KRaft broker can answer broker-api-versions
+      # slightly before its coordinator election settles, which
+      # otherwise shows up downstream as a transient (self-healing)
+      # NOT_COORDINATOR error on the backend's first consumer group join.
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # docs/adr/0010-simulated-consumers — registered as an ordinary Endpoint
+  # via POST /v1/endpoints, e.g. http://simulator:4000/simulate/error-500.
+  # Internal only: called by the backend's delivery worker, never by a
+  # human or a frontend directly.
+  simulator:
+    build: ./simulator
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4000/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./back_java
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      KAFKA_HOST: kafka
+      # Overridable so the smoke-check script can shorten the retry
+      # ladder for a fast DEAD/DLQ assertion — production defaults match
+      # application.yml's own built-in values when unset.
+      RETRY_DELAY_BAND_1_MS: ${RETRY_DELAY_BAND_1_MS:-10000}
+      RETRY_DELAY_BAND_2_MS: ${RETRY_DELAY_BAND_2_MS:-30000}
+      RETRY_DELAY_BAND_3_MS: ${RETRY_DELAY_BAND_3_MS:-120000}
+      DELIVERY_HTTP_TIMEOUT_MS: ${DELIVERY_HTTP_TIMEOUT_MS:-3000}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/v1/actuator/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
